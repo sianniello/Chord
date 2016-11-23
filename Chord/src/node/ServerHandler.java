@@ -12,11 +12,13 @@ class ServerHandler implements Runnable {
 	private Socket client;
 	private ObjectOutputStream out;
 	private ObjectInputStream in;
+	private Node n;
 
-	public ServerHandler(Socket client) throws IOException {
+	public ServerHandler(Socket client, Node n) throws IOException {
 		this.client = client;
 		out = new ObjectOutputStream(client.getOutputStream());
 		in = new ObjectInputStream(client.getInputStream());
+		this.n = n;
 	}
 
 	@Override
@@ -25,26 +27,21 @@ class ServerHandler implements Runnable {
 		try {
 			client_port = (Integer) in.readObject();
 			System.out.println("Node " + client_port + " connected.");
-			
+
 			switch((Integer) in.readObject()) {
-			case 2: 
-				join(client_port);
+			case 2: //join
+				out.writeObject(join(Integer.hashCode(client_port)));
 				break;
 			}
-			
+
 		} catch (IOException | ClassNotFoundException e) {
 			System.err.println("Connection lost!");
 		}
 	}
 
-	private void join(int client_port) {
-		findSucc(client_port);
-		
-	}
-
-	private void findSucc(int client_port) {
-		// TODO Auto-generated method stub
-		
+	private Node join(int id) {
+		Node req_succ = n.findSucc(id);
+		return req_succ;
 	}
 
 }

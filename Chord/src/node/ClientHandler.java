@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package node;
 
 import java.io.IOException;
@@ -15,62 +10,38 @@ import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/**
- *
- * @author daniele
- */
 class ClientHandler implements Runnable {
-    private int port;// questa è la porta della parte Server del peer
-    public ClientHandler(int port) {
-        this.port = port;
-    }
+	private int port;
+	private HashSet<InetSocketAddress> set;
+	
+	public ClientHandler(int port, HashSet<InetSocketAddress> set) {
+		this.port = port;
+		this.set = set;
+	}
 
-    public void show(HashSet<InetSocketAddress> set){
-        
-        for(InetSocketAddress addr: set)
-            System.out.println(addr.getPort());
-    }
-    public void join() throws IOException, ClassNotFoundException{
-        Socket client = null;
-        ObjectOutputStream out = null;
-        ObjectInputStream in = null;
-        
-        client = new Socket("localhost", 1099);
-        out = new ObjectOutputStream(client.getOutputStream());
-        in = new ObjectInputStream(client.getInputStream());
-        
-        out.writeObject(new InetSocketAddress(port));
-        show((HashSet<InetSocketAddress>) in.readObject());
-        
-    }
-    @Override
-    public void run() {
-    
-        Scanner s = new Scanner(System.in);
-        int peerPort = 0;
-        String message = null;
-        for(;;){
-            try {
-                System.out.println("LISTA PEER CONNESSI");
-                join();
-                System.out.println("QUALE PEER VUOI CONTATTARE?");
-                peerPort = Integer.parseInt(s.nextLine());
-                System.out.println("COSA VUOI SPEDIRE?");
-                message = s.nextLine();
-                
-                Socket client = new Socket("localhost", peerPort);
-                ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
-                ObjectInputStream in = new ObjectInputStream(client.getInputStream());
-                
-                out.writeObject(message);
-                System.out.println("Peer " + peerPort + " ha risposto: " + (String) in.readObject());
-                
-            } catch (IOException ex) {
-                Logger.getLogger(ClientHandler.class.getName()).log(Level.SEVERE, null, ex);
-            } catch (ClassNotFoundException ex) {
-                Logger.getLogger(ClientHandler.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-    }
-    
+	@SuppressWarnings({ "resource", "unchecked" })
+	public void joinServer() throws IOException, ClassNotFoundException{
+		Socket client = null;
+		ObjectOutputStream out = null;
+		ObjectInputStream in = null;
+
+		client = new Socket("localhost", 1099);	//contact joinserver
+		out = new ObjectOutputStream(client.getOutputStream());
+		in = new ObjectInputStream(client.getInputStream());
+
+		out.writeObject(new InetSocketAddress(port));
+		set = (HashSet<InetSocketAddress>) in.readObject();
+		System.out.println("Node[" + port + "] - Network: " + set.toString());
+
+	}
+	@Override
+	public void run() {
+
+		try {
+			joinServer();
+		} catch (ClassNotFoundException | IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
 }
