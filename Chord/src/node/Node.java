@@ -36,6 +36,7 @@ public class Node implements Runnable, Serializable{
 	private int id;
 	private int port;
 	private HashSet<InetSocketAddress> set;
+	private Node[] finger;
 
 	@SuppressWarnings({ "javadoc", "unqualified-field-access" })
 	public Node(int port) throws IOException, ClassNotFoundException {
@@ -44,6 +45,7 @@ public class Node implements Runnable, Serializable{
 		this.port = port;
 		joinServer();
 		succ = null;
+		finger = new Node[100];
 	}
 
 	@SuppressWarnings("unchecked")
@@ -70,6 +72,7 @@ public class Node implements Runnable, Serializable{
 			public void run() {
 				try {
 					System.out.println("Ring stabilization routine...");
+					
 					Thread.sleep(10000);
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
@@ -146,16 +149,16 @@ public class Node implements Runnable, Serializable{
 
 	private void addFile() throws IOException {
 		File f = new RandomFile().getFile();
-
+		int key = f.hashCode();
 	}
 
 	public void create() throws IOException {
 		if(succ == null) {
 			pred = null;
 			succ = this;
+			finger[0] = succ;
 			System.out.println("Ring created. Successor ID = " + succ.getId());
 			stabilize();
-
 		}
 		else
 			System.out.println("Ring already created.");
@@ -207,10 +210,19 @@ public class Node implements Runnable, Serializable{
 	 * @return	new node's successor
 	 */
 	public Node findSucc(int id) {
-		if (id > this.getId() || id <= this.getSucc().getId()) 
+		Node n;
+		if (id > this.getId() && id <= this.getSucc().getId()) 
 			return this.getSucc();
 		else
-			return succ.findSucc(id);
+			n = closestPreNode(id);
+		return n.getSucc();
+	}
+
+	private Node closestPreNode(int id) {
+		Node n = this;
+		while(n.getSucc().getId() > n.getId() && id > n.getId())
+			n = n.getSucc();
+		return n;
 	}
 
 }
