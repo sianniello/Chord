@@ -30,15 +30,24 @@ class ServerHandler implements Runnable {
 
 			switch((Integer) in.readObject()) {
 			case 2: //join
-				out.writeObject(join(Integer.hashCode(client_port)));
+				System.out.println("Node " + client_port + " requests join.");
+				if(n.getSucc() != null)	//if ring exist
+					out.writeObject(join(Integer.hashCode(client_port)));
+				else
+					out.writeObject(null);
 				break;
 			}
 
 		} catch (IOException | ClassNotFoundException e) {
 			System.err.println("Connection lost!");
+			e.printStackTrace();
 		}
 	}
 
+	/**
+	 * @param new node's id 
+	 * @return	node's successor
+	 */
 	private Node join(int id) {
 		Node req_succ = n.findSucc(id);
 		return req_succ;
