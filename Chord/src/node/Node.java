@@ -11,22 +11,12 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Hashtable;
 import java.util.LinkedList;
-import java.util.Random;
 import java.util.Scanner;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import javax.net.ssl.HandshakeCompletedEvent;
-
 import com.google.common.hash.Hashing;
 
-import consistentHash.ConsistentHash;
-import jdk.internal.dynalink.beans.StaticClass;
 import randomFile.RandomFile;
 
 /**
@@ -45,6 +35,7 @@ public class Node implements Runnable, Serializable{
 	private int port;
 	private HashSet<InetSocketAddress> set;
 	private HashMap<Integer, Node> finger;
+	private LinkedList<File> fileList;
 
 	@SuppressWarnings({ "javadoc", "unqualified-field-access" })
 	public Node(int port) throws IOException, ClassNotFoundException {
@@ -176,33 +167,44 @@ public class Node implements Runnable, Serializable{
 		return this;
 	}
 
+	@SuppressWarnings("resource")
 	private void addFile() throws IOException {
-		File f = new RandomFile().getFile();
-		int key = Hashing.consistentHash(f.hashCode(), m);
+		File file = new RandomFile().getFile();
+		int key = Hashing.consistentHash(file.hashCode(), m);
 
 		//TODO find correct node
 
 		Socket client = null;
 		ObjectOutputStream out = null;
 
-		//client = new Socket("localhost", key)
+		client = new Socket("localhost", finger.get(key).getPort());
+		out = new ObjectOutputStream(out);
+		out.writeObject(this.getPort());
+		out.writeObject(3);
+		out.writeObject(file);
+		client.close();
 	}
 
 	public void create() throws IOException {
 		if(succ == null) {
 			pred = null;
 			succ = this;
-
+			
 			//finger table initialization
 			finger = new HashMap<>();
 			for(int i = 1; i <= m; i++) 
-				finger.put(i, this.findSuccessor(this.getId() + 2^(i-1)%2^m)); 
+				finger.put(i, this); 
 			
+			fileList = new LinkedList<>();
 			System.out.println("Ring created. Node[" + this.getId() + "], Finger = " + finger.toString());
 			stabilize(this);
 		}
 		else
 			System.out.println("Ring already created.");
+	}
+
+	public LinkedList<File> getFileList() {
+		return fileList;
 	}
 
 	@SuppressWarnings("resource")

@@ -1,5 +1,6 @@
 package node;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -38,6 +39,8 @@ class ServerHandler implements Runnable {
 					else
 						out.writeObject(null);
 					break;
+				case 3: //add file
+					addFile();
 				case 5:	//notify
 					succNotify((Node) in.readObject());
 					break;
@@ -49,9 +52,14 @@ class ServerHandler implements Runnable {
 		}
 	}
 
+	private void addFile() throws ClassNotFoundException, IOException {
+		File file = (File) in.readObject();
+		n.getFileList().add(file);
+	}
+
 	private void succNotify(Node n1) {
 		if(n.getPred() == null || (n1.getId() > n.getPred().getId() && n1.getId() < n.getId()))
-				n.setPred(n1);
+			n.setPred(n1);
 	}
 
 	public Node findSuccessor(int id) {
