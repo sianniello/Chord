@@ -21,6 +21,7 @@ class ServerHandler implements Runnable {
 		out = new ObjectOutputStream(client.getOutputStream());
 		in = new ObjectInputStream(client.getInputStream());
 		this.n = n;
+		this.m = m;
 	}
 
 	@Override
@@ -29,15 +30,19 @@ class ServerHandler implements Runnable {
 			int client_port = 0;
 			try {
 				client_port = (Integer) in.readObject();
-				System.out.println("Node " + client_port + " connected.");
+				System.out.println("Node[" + client_port + "]connected.");
 
 				switch((Integer) in.readObject()) {
 				case 2: //join
-					System.out.println("Node " + client_port + " requests join.");
-					if(n.getSucc() != null)	//if ring exist
-						out.writeObject(findSuccessor(Hashing.consistentHash(client_port, m)));
+					System.out.println("Node[" + client_port + "] requests join.");
+					if(n.getSucc() != null) {	//if ring exist
+						Node node = (Node) in.readObject();
+						int id = Hashing.consistentHash(client_port, m);
+						out.writeObject(findSuccessor(node));	//send new node its successor
+					}
 					else
 						out.writeObject(null);
+					client.close();
 					break;
 				case 3: //add file
 					addFile();
@@ -62,13 +67,16 @@ class ServerHandler implements Runnable {
 			n.setPred(n1);
 	}
 
-	public Node findSuccessor(int id) {
+	public Node findSuccessor(Node node) {
+		if(n.getId() == n.getSucc().getId()) 
+			return node;
+
 		Node n0;
-		if (id > n.getId() && id <= n.getSucc().getId()) 
+		if (node.getId() > n.getId() && node.getId() <= n.getSucc().getId()) 
 			return n.getSucc();
 		else
-			n0 = closestPrecedingNode(id);
-		return findSuccessor(n0.getId());
+			n0 = closestPrecedingNode(node.getId());
+		return findSuccessor(n0);
 	}
 
 	private Node closestPrecedingNode(int id) {

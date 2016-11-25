@@ -11,6 +11,7 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.Scanner;
 import java.util.concurrent.Executor;
@@ -30,16 +31,16 @@ public class Node implements Runnable, Serializable{
 
 
 	private Node succ, pred;
-	private final static int m = 3;
+	private final static int m = 8;
 	private int id;
 	private int port;
 	private HashSet<InetSocketAddress> set;
-	private HashMap<Integer, Node> finger;
+	private Hashtable<Integer, Node> finger;
 	private LinkedList<File> fileList;
 
 	@SuppressWarnings({ "javadoc", "unqualified-field-access" })
 	public Node(int port) throws IOException, ClassNotFoundException {
-		id = Hashing.consistentHash(port, 3);
+		id = Hashing.consistentHash(port, m);
 		set = new HashSet<>();
 		this.port = port;
 		joinServer();
@@ -140,6 +141,7 @@ public class Node implements Runnable, Serializable{
 
 		out.writeObject(port);	//node port
 		out.writeObject(2);		//request id (join)
+		out.writeObject(this);
 		pred = null;
 		succ = (Node) in.readObject();
 
@@ -191,7 +193,7 @@ public class Node implements Runnable, Serializable{
 			succ = this;
 			
 			//finger table initialization
-			finger = new HashMap<>();
+			finger = new Hashtable<>();
 			for(int i = 1; i <= m; i++) 
 				finger.put(i, this); 
 			
@@ -279,7 +281,7 @@ public class Node implements Runnable, Serializable{
 		}
 	}
 
-	public HashMap<Integer, Node> getFinger() {
+	public Hashtable<Integer, Node> getFinger() {
 		return finger;
 	}
 
