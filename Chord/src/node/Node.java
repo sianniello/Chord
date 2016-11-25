@@ -71,7 +71,7 @@ public class Node implements Runnable, Serializable{
 	 * @param node
 	 */
 	protected void stabilize(Node node) {
-		(new Runnable() {
+		new Thread(new Runnable() {
 
 			@Override
 			public void run() {
@@ -93,7 +93,7 @@ public class Node implements Runnable, Serializable{
 					}
 				}
 			}
-		}).run();
+		}).start();
 	}
 
 	protected void notify(Node succ) throws UnknownHostException, IOException {
@@ -133,7 +133,7 @@ public class Node implements Runnable, Serializable{
 			if(client.isConnected()) break;
 		}
 
-		System.out.println("Connection estabilished with node " + client.getPort());
+		System.out.println("Node[" + this.getPort() + "], connection estabilished with Node[" + client.getPort() + "].");
 
 		out = new ObjectOutputStream(client.getOutputStream());
 		in = new ObjectInputStream(client.getInputStream());

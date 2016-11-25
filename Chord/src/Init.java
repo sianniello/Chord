@@ -17,7 +17,7 @@ public class Init {
 			}
 		}
 		nodes[0].create();
-		//nodes[1].join();
+		nodes[1].join();
 	}
 }
 
