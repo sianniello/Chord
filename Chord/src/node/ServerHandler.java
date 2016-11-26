@@ -35,7 +35,10 @@ class ServerHandler implements Runnable {
 			case 2: //join
 				int client_id = Hashing.consistentHash(client_port, m);
 				System.out.println("Node[" + n.getId() + "]: Node[" + client_id + "] requests join.");
-				if(n.getSucc() != null) {	//if ring exist
+				
+				if(client_id == n.getId())
+					out.writeObject(null);
+				else if(n.getSucc() != null) {	//if ring exist
 					Node node = (Node) in.readObject();
 					out.writeObject(findSuccessor(node));	//send new node its successor
 					n.stabilize(n);
