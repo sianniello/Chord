@@ -26,64 +26,61 @@ class ServerHandler implements Runnable {
 
 	@Override
 	public void run() {
-		while(true) {
-			int client_port = 0;
-			try {
-				client_port = (Integer) in.readObject();
-				System.out.println("Node[" + client_port + "]connected.");
+		int client_port = 0;
+		try {
+			client_port = (Integer) in.readObject();
+			System.out.println("Node[" + client_port + "]: contacts ServerSide of Node[" + n.getPort() + "]");
 
-				switch((Integer) in.readObject()) {
-				case 2: //join
-					System.out.println("Node[" + client_port + "] requests join.");
-					if(n.getSucc() != null) {	//if ring exist
-						Node node = (Node) in.readObject();
-						int id = Hashing.consistentHash(client_port, m);
-						out.writeObject(findSuccessor(node));	//send new node its successor
-					}
-					else
-						out.writeObject(null);
-					client.close();
-					break;
-				case 3: //add file
-					addFile();
-				case 5:	//notify
-					succNotify((Node) in.readObject());
-					break;
+			switch((Integer) in.readObject()) {
+			case 2: //join
+				int client_id = Hashing.consistentHash(client_port, m);
+				System.out.println("Node[" + n.getId() + "]: Node[" + client_id + "] requests join.");
+				if(n.getSucc() != null) {	//if ring exist
+					Node node = (Node) in.readObject();
+					out.writeObject(findSuccessor(node));	//send new node its successor
+					n.stabilize(n);
+					if(node.getId() > n.getSucc().getId())
+						n.setSucc(node);
 				}
-			} catch (IOException | ClassNotFoundException e) {
-				System.err.println("Connection lost!");
-				e.printStackTrace();
+				else
+					out.writeObject(null);
+				break;
+			case 3: //add file
+				addFile();
+				break;
+			case 5:	//notify
+				succNotify((Node) in.readObject());
+				break;
+			case 6:	//stabilize
+				out.writeObject(n.getPred());
+				break;
+			case 7:	//find_successor
+				Node id = (Node) in.readObject();
+				out.writeObject(findSuccessor(id));
+				break;
 			}
+		} catch (IOException | ClassNotFoundException e) {
+			System.err.println("Connection lost!");
+			e.printStackTrace();
 		}
 	}
 
 	private void addFile() throws ClassNotFoundException, IOException {
 		File file = (File) in.readObject();
-		n.getFileList().add(file);
+		n.getFileList().put(Hashing.consistentHash(file.hashCode(), m), file);
+		System.out.println("Node[" + n.getId() + "]: adds file '" + file.getName() + "'. Size = " + file.length() + " bytes");
 	}
 
 	private void succNotify(Node n1) {
-		if(n.getPred() == null || (n1.getId() > n.getPred().getId() && n1.getId() < n.getId()))
+		if((n.getPred() == null || n.getPred().getId() == n.getId()) || (n1.getId() > n.getPred().getId() && n1.getId() < n.getId())) {
 			n.setPred(n1);
+			System.out.println("Node[" + n.getId() + "] - Successor is " + n.getSucc().getId() + ", Predecessor is " + n.getPred().getId());
+		}
 	}
 
 	public Node findSuccessor(Node node) {
-		if(n.getId() == n.getSucc().getId()) 
-			return node;
-
-		Node n0;
-		if (node.getId() > n.getId() && node.getId() <= n.getSucc().getId()) 
-			return n.getSucc();
-		else
-			n0 = closestPrecedingNode(node.getId());
-		return findSuccessor(n0);
+		if(n.getId() == n.getSucc().getId() || node.getId() <= n.getId()) 
+			return n;
+		else return findSuccessor(n.getSucc());
 	}
-
-	private Node closestPrecedingNode(int id) {
-		for(int i = m; i == 1; i--)
-			if(n.getFinger().get(i).getId() > n.getId() && n.getFinger().get(i).getId() < id)
-				return n.getFinger().get(i);
-		return n;
-	}
-
 }

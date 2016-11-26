@@ -31,12 +31,13 @@ public class Node implements Runnable, Serializable{
 
 
 	private Node succ, pred;
-	private final static int m = 8;
+	private final static int m = 8;		//keys/ID space
+	private static final int p = 3;		//finger table's entries
 	private int id;
 	private int port;
-	private HashSet<InetSocketAddress> set;
+	private HashSet<InetSocketAddress> set;		//Bottomlay network's addresses
 	private Hashtable<Integer, Node> finger;
-	private LinkedList<File> fileList;
+	private Hashtable<Integer, File> fileList;	
 
 	@SuppressWarnings({ "javadoc", "unqualified-field-access" })
 	public Node(int port) throws IOException, ClassNotFoundException {
@@ -45,6 +46,7 @@ public class Node implements Runnable, Serializable{
 		this.port = port;
 		joinServer();
 		succ = null;
+		fileList = new Hashtable<>();
 	}
 
 	@SuppressWarnings("unchecked")
@@ -73,47 +75,72 @@ public class Node implements Runnable, Serializable{
 	 */
 	protected void stabilize(Node node) {
 		new Thread(new Runnable() {
-
 			@Override
 			public void run() {
-				while(true) {
+				try {
+					System.out.println("Node[" + node.getId() + "] - Ring stabilization routine...");
+
+					Socket client = new Socket("localhost", node.getSucc().getPort());
+					ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
+					ObjectInputStream in = new ObjectInputStream(client.getInputStream());
+					out.writeObject(node.getPort());
+					out.writeObject(6);
+
+					Node x = null;
 					try {
-						System.out.println("Ring stabilization routine...");
-
-						Node x = node.getSucc().getPred();
-						if(x != null) {
-							if((x.getId() > node.getId() && x.getId() < node.getSucc().getId()))
-								node.setSucc(x);
-							node.notify(node.getSucc());
-						}
-
-						Thread.sleep(10000);
-					} catch (InterruptedException | IOException e) {
+						x = (Node) in.readObject();
+					} catch (ClassNotFoundException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
+					client.close();
+
+					if(x != null && (x.getId() > node.getId() && x.getId() < node.getSucc().getId()))
+						node.setSucc(x);
+					node.notifySucc(node.getSucc());
+
+					node.checkPredecessor();
+
+					System.out.println("Node[" + node.getId() + "] - Successor is " + node.getSucc().getId() + 
+							", Predecessor is " + (node.getPred() != null ? node.getPred().getId() : null));
+
+					Thread.sleep(3000);
+				} catch (InterruptedException | IOException e) {
+					e.printStackTrace();
 				}
 			}
 		}).start();
 	}
 
-	protected void notify(Node succ) throws UnknownHostException, IOException {
+	protected void checkPredecessor() {
+		try {
+			if(pred != null)
+				if(!new Socket("localhost", pred.getPort()).isConnected())
+					setPred(null);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	protected void notifySucc(Node node) throws UnknownHostException, IOException {
 
 		Socket client = null;
 		ObjectOutputStream out = null;
 
-		client = new Socket("localhost", succ.getPort());
+		client = new Socket("localhost", node.getPort());
 
 		if(client.isConnected()) {
 			out = new ObjectOutputStream(client.getOutputStream());
 			out.writeObject(port);	//node port
 			out.writeObject(5);	//notify
 			out.writeObject(this);
+			client.close();
 		}
-		client.close();
+
 	}
 
-	private int getPort() {
+	public int getPort() {
 		return port;
 	}
 
@@ -129,86 +156,91 @@ public class Node implements Runnable, Serializable{
 
 		//node tries to connect to ring
 		for (InetSocketAddress isa : set) {
-			if(isa.getPort() != port)
+			if(isa.getPort() != port) {
 				client = new Socket("localhost", isa.getPort());
-			if(client.isConnected()) break;
+				if(client.isConnected()) {
+
+					out = new ObjectOutputStream(client.getOutputStream());
+					in = new ObjectInputStream(client.getInputStream());
+
+					out.writeObject(port);	//node port
+					out.writeObject(2);		//request id (join)
+					out.writeObject(this);
+					pred = null;
+					succ = (Node) in.readObject();
+
+					if(succ != null) {
+						System.out.println("Node[" + getId() + "] attached to ring." );
+						System.out.println("Node[" + getId() + "] - Successor is " + getSucc().getId());
+						break;
+					}
+					client.close();
+				}
+			}
 		}
-
-		System.out.println("Node[" + this.getPort() + "], connection estabilished with Node[" + client.getPort() + "].");
-
-		out = new ObjectOutputStream(client.getOutputStream());
-		in = new ObjectInputStream(client.getInputStream());
-
-		out.writeObject(port);	//node port
-		out.writeObject(2);		//request id (join)
-		out.writeObject(this);
-		pred = null;
-		succ = (Node) in.readObject();
-
-		if(succ != null)
-			System.out.println("Node [" + getId() + "] attached to ring." );
-		else
-			System.out.println("No ring found.");
-
-		client.close();
-	}
-
-	private Node findSuccessor(int id) {
-		Node n0;
-		if (id > this.getId() && id <= this.getSucc().getId())
-			return this.getSucc();
-		else
-			n0 = closestPrecedingNode(id);
-		return n0.findSuccessor(id);
-	}
-
-	private Node closestPrecedingNode(int id) {
-		for(int i = m; i == 1; i--)
-			if(this.getFinger().get(i).getId() > this.getId() && this.getFinger().get(i).getId() < id)
-				return this.getFinger().get(i);
-		return this;
+		stabilize(this);
 	}
 
 	@SuppressWarnings("resource")
-	private void addFile() throws IOException {
+	public void addFile() throws IOException {
 		File file = new RandomFile().getFile();
 		int key = Hashing.consistentHash(file.hashCode(), m);
 
-		//TODO find correct node
 
-		Socket client = null;
-		ObjectOutputStream out = null;
+		Socket client = new Socket("localhost", this.getPort());
+		ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
+		ObjectInputStream in = new ObjectInputStream(client.getInputStream());
 
-		client = new Socket("localhost", finger.get(key).getPort());
-		out = new ObjectOutputStream(out);
+		out.writeObject(this.getPort());
+		out.writeObject(7);
+		out.writeObject(this);
+
+		Node k = null;
+		try {
+			k = (Node) in.readObject();
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+		}finally {
+			client.close();
+		}
+
+		client = new Socket("localhost", k.getPort());
+		out = new ObjectOutputStream(client.getOutputStream());
 		out.writeObject(this.getPort());
 		out.writeObject(3);
 		out.writeObject(file);
 		client.close();
 	}
 
+	/**
+	 * Ring creation
+	 *
+	 * @throws IOException
+	 */
 	public void create() throws IOException {
-		if(succ == null) {
+		if(succ == null) {		//if succ == null ring isn't created yet
 			pred = null;
 			succ = this;
-			
+
 			//finger table initialization
 			finger = new Hashtable<>();
-			for(int i = 1; i <= m; i++) 
+			for(int i = 1; i <= p; i++) 
 				finger.put(i, this); 
-			
-			fileList = new LinkedList<>();
-			System.out.println("Ring created. Node[" + this.getId() + "], Finger = " + finger.toString());
-			stabilize(this);
+
+			System.out.println("Node[" + this.getId() + "]: Ring created.");
+			System.out.println("Node[" + this.getId() + "]: PredecessorID = " + this.getPred() + ", SuccessorID = " + this.getSucc().getId());
 		}
 		else
 			System.out.println("Ring already created.");
 	}
 
-	public LinkedList<File> getFileList() {
+	public Hashtable<Integer, File> getFileList() {
 		return fileList;
 	}
 
+	/* (non-Javadoc)
+	 * @see java.lang.Runnable#run()
+	 */
 	@SuppressWarnings("resource")
 	@Override
 	public void run() {

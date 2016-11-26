@@ -17,7 +17,11 @@ public class Init {
 			}
 		}
 		nodes[0].create();
+		nodes[0].addFile();
+		nodes[0].addFile();
 		nodes[3].join();
+		nodes[3].addFile();
+		nodes[1].join();
 	}
 }
 

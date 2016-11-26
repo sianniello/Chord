@@ -1,0 +1,2 @@
+ERROR - 16:14:42: org.xml.sax.SAXParseExceptionpublicId: /Chord/src/node/FingerTable.java; systemId: file:///Chord/src/node/FingerTable.java; lineNumber: 1; columnNumber: 1; Il contenuto non è consentito nel prologo.
+ERROR - 16:14:42: org.xml.sax.SAXParseExceptionpublicId: /Chord/src/node/FingerTable.java; systemId: file:///Chord/src/node/FingerTable.java; lineNumber: 1; columnNumber: 1; Il contenuto non è consentito nel prologo.
