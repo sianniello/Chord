@@ -77,36 +77,35 @@ public class Node implements Runnable, Serializable{
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
-				try {
-					System.out.println("Node[" + node.getId() + "] - Ring stabilization routine...");
+				while(true) {
+					try {
+						System.out.println("Node[" + node.getId() + "] - Ring stabilization routine...");
 
-//					Socket client = new Socket("localhost", node.getSucc().getPort());
-//					ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
-//					ObjectInputStream in = new ObjectInputStream(client.getInputStream());
-//					out.writeObject(node.getPort());
-//					out.writeObject(6);
-//
-//					Node x = null;
-//					try {
-//						x = (Node) in.readObject();
-//					} catch (ClassNotFoundException e) {
-//						// TODO Auto-generated catch block
-//						e.printStackTrace();
-//					}
-//					client.close();
-//
-//					if(x != null && (x.getId() > node.getId() && x.getId() < node.getSucc().getId()))
-//						node.setSucc(x);
-//					node.notifySucc(node.getSucc());
-//
-//					node.checkPredecessor();
-//
-//					System.out.println("Node[" + node.getId() + "] - Successor is " + node.getSucc().getId() + 
-//							", Predecessor is " + (node.getPred() != null ? node.getPred().getId() : null));
+						Socket client = new Socket("localhost", node.getSucc().getPort());
 
-					Thread.sleep(3000);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
+						ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
+						ObjectInputStream in = new ObjectInputStream(client.getInputStream());
+						out.writeObject(node.getPort());
+						out.writeObject(6);
+
+						Node x = null;
+						x = (Node) in.readObject();
+						client.close();
+						if(x != null && (x.getId() > node.getId() && x.getId() < node.getSucc().getId()))
+							node.setSucc(x);
+
+						node.notifySucc(node.getSucc());
+
+						node.checkPredecessor();
+
+						System.out.println("Node[" + node.getId() + "] - Successor is " + node.getSucc().getId() + 
+								", Predecessor is " + (node.getPred() != null ? node.getPred().getId() : null));
+
+						Thread.sleep(3000);
+					} catch (InterruptedException | IOException | ClassNotFoundException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
 				}
 			}
 		}).start();
@@ -186,12 +185,8 @@ public class Node implements Runnable, Serializable{
 		stabilize(this);
 	}
 
-	@SuppressWarnings("resource")
 	public void addFile() throws IOException {
 		File file = new RandomFile().getFile();
-		int key = Hashing.consistentHash(file.hashCode(), m);
-
-
 		Socket client = new Socket("localhost", this.getPort());
 		ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
 		ObjectInputStream in = new ObjectInputStream(client.getInputStream());
@@ -237,7 +232,6 @@ public class Node implements Runnable, Serializable{
 		}
 		else
 			System.out.println("Ring already created.");
-		stabilize(this);
 	}
 
 	public Hashtable<Integer, File> getFileList() {

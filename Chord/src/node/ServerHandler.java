@@ -82,8 +82,10 @@ class ServerHandler implements Runnable {
 	}
 
 	public Node findSuccessor(Node node) {
-		if(n.getId() == n.getSucc().getId() || node.getId() <= n.getId()) 
+		if(n.getId() == n.getSucc().getId()) 
 			return n;
+		else if (n.getId() < node.getId() && node.getId() <= n.getSucc().getId())
+			return n.getSucc();
 		else return findSuccessor(n.getSucc());
 	}
 }
