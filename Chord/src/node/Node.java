@@ -18,6 +18,7 @@ import java.util.Scanner;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import com.google.common.hash.Hashing;
+import com.sun.security.ntlm.Client;
 
 import randomFile.RandomFile;
 
@@ -30,6 +31,11 @@ import randomFile.RandomFile;
 @SuppressWarnings("serial")
 public class Node implements Runnable, Serializable{
 
+	public static final int add_file = 3;
+	public static final int join = 2;
+	public static final int notify = 5;
+	public static final int stabilize = 6;
+	public static final int find_successor = 7;
 
 	private Node succ, pred;
 	private final static int m = 8;		//keys/ID space
@@ -69,8 +75,6 @@ public class Node implements Runnable, Serializable{
 		out.writeObject(new InetSocketAddress(port));
 		set = (HashSet<InetSocketAddress>) in.readObject();
 		System.out.println("Node[" + port + "] - Network: " + set.toString());
-		client.close();
-
 	}
 
 	/**
@@ -84,36 +88,54 @@ public class Node implements Runnable, Serializable{
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
+
+				Socket client = null;
+				ObjectOutputStream out = null;
+				ObjectInputStream in = null;
+
 				while(true) {
-					try {
+					if(node.getId() != node.getSucc().getId()) {
 						System.out.println("Node[" + node.getId() + "] - Ring stabilization routine...");
+						try {
+							client = new Socket("localhost", node.getSucc().getPort());
+							System.out.println(client.toString());
+							out = new ObjectOutputStream(client.getOutputStream());
+							in = new ObjectInputStream(client.getInputStream());
 
-						Socket client = new Socket("localhost", node.getSucc().getPort());
-						ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
-						ObjectInputStream in = new ObjectInputStream(client.getInputStream());
-						out.writeObject(node.getPort());
-						out.writeObject(6);
+							Request req = new Request(node.getPort(), stabilize, node);
 
-						Node x = null;
-						x = (Node) in.readObject();
-						if(x != null)
-							if((x.getId() > node.getId() && x.getId() < node.getSucc().getId()) ||
-									node.getId() == node.getSucc().getId()) {
-								node.setSucc(x);
-								System.out.println("Node[" + node.getId() + "] - Successor updated: " + node.getSucc().getId());
+							out.writeObject(req);
+							out.flush();
+							Node x = (Node) in.readObject();
+
+							if(x != null)
+								if((x.getId() > node.getId() && x.getId() < node.getSucc().getId()) ||
+										node.getId() == node.getSucc().getId()) {
+									node.setSucc(x);
+									System.out.println("Node[" + node.getId() + "] - Successor updated: " + node.getSucc().getId());
+								}
+
+							node.notifySucc(node.getSucc());
+
+							node.checkPredecessor();
+
+							System.out.println("Node[" + node.getId() + "] - Successor is " + node.getSucc().getId() + 
+									", Predecessor is " + (node.getPred() != null ? node.getPred().getId() : null));
+
+						} catch (IOException | ClassNotFoundException e) {
+							e.printStackTrace();
+						}finally {
+							try {
+								client.close();
+							} catch (IOException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
 							}
-						client.close();
-						
-						node.notifySucc(node.getSucc());
-
-						node.checkPredecessor();
-
-						System.out.println("Node[" + node.getId() + "] - Successor is " + node.getSucc().getId() + 
-								", Predecessor is " + (node.getPred() != null ? node.getPred().getId() : null));
-
-						Thread.sleep(1000);
-					} catch (InterruptedException | IOException | ClassNotFoundException e) {
-						// TODO Auto-generated catch block
+						}
+					}
+					try {
+						Thread.sleep(new Random().nextInt(3000) + 1000);
+					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}
 				}
@@ -127,7 +149,6 @@ public class Node implements Runnable, Serializable{
 				Socket client = new Socket("localhost", pred.getPort());
 				if(!client.isConnected())
 					setPred(null);
-				client.close();
 			}
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -135,21 +156,25 @@ public class Node implements Runnable, Serializable{
 		}
 	}
 
-	protected void notifySucc(Node node) throws UnknownHostException, IOException {
+	protected void notifySucc(Node node) throws IOException {
 
 		Socket client = null;
 		ObjectOutputStream out = null;
 
-		client = new Socket("localhost", node.getPort());
+		try {
+			client = new Socket("localhost", node.getPort());
 
-		if(client.isConnected()) {
-			out = new ObjectOutputStream(client.getOutputStream());
-			out.writeObject(port);	//node port
-			out.writeObject(5);	//notify
-			out.writeObject(this);
+			if(client.isConnected()) {
+				out = new ObjectOutputStream(client.getOutputStream());
 
+				Request req = new Request(port, notify, this);
+				out.writeObject(req);	//notify
+				out.flush();
+			}
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
-		client.close();
 	}
 
 	public int getPort() {
@@ -161,7 +186,7 @@ public class Node implements Runnable, Serializable{
 	 * @throws ClassNotFoundException
 	 */
 	@SuppressWarnings({ "javadoc" })
-	public void join() throws IOException, ClassNotFoundException{
+	public void join() throws IOException {
 		Socket client = null;
 		ObjectOutputStream out = null;
 		ObjectInputStream in = null;
@@ -169,33 +194,36 @@ public class Node implements Runnable, Serializable{
 		//node tries to connect to ring
 		for (InetSocketAddress isa : set) {
 			if(isa.getPort() != port) {
-				client = new Socket("localhost", isa.getPort());
-				if(client.isConnected()) {
+				try {
+					client = new Socket("localhost", isa.getPort());
 
 					out = new ObjectOutputStream(client.getOutputStream());
 					in = new ObjectInputStream(client.getInputStream());
 
-					out.writeObject(port);	//node port
-					out.writeObject(2);		//request id (join)
-					out.writeObject(this);
-					pred = null;
+					Request req = new Request(port, join, this);
+					out.writeObject(req);
+					out.flush();
 					succ = (Node) in.readObject();
+					pred = null;
 
-					if(succ != null) {
-						System.out.println("Node[" + getId() + "] attached to ring." );
-						System.out.println("Node[" + getId() + "] - Successor is " + getSucc().getId());
-						client.close();
-						break;
-					}
-					else {
-						System.err.println(" Node[" + getId() + "] request rejected." );
-						client.close();
-						break;
-					}
+				}catch (IOException | ClassNotFoundException e) {
+					e.printStackTrace();
+				}finally {
+					in.close();
+					out.close();
+				}
+
+				if(succ != null) {
+					System.out.println("Node[" + getId() + "] attached to ring." );
+					System.out.println("Node[" + getId() + "] - Successor is " + getSucc().getId());
+					stabilize(this);
+					break;
+				}
+				else {
+					System.err.println("Node[" + getId() + "] request rejected." );
 				}
 			}
 		}
-		stabilize(this);
 	}
 
 	public void addFile() throws IOException {
@@ -204,25 +232,23 @@ public class Node implements Runnable, Serializable{
 		ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
 		ObjectInputStream in = new ObjectInputStream(client.getInputStream());
 
-		out.writeObject(this.getPort());
-		out.writeObject(7);
-		out.writeObject(this);
+		Request req = new Request(this.getPort(), find_successor, this);
+
+		out.writeObject(req);
 
 		Node k = null;
 		try {
 			k = (Node) in.readObject();
 		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
-		} finally {
-			client.close();
 		}
 
 		client = new Socket("localhost", k.getPort());
 		out = new ObjectOutputStream(client.getOutputStream());
-		out.writeObject(this.getPort());
-		out.writeObject(3);
-		out.writeObject(file);
-		client.close();
+
+		req = new Request(port, add_file, file);
+		out.writeObject(req);
+
 	}
 
 	/**
@@ -245,6 +271,7 @@ public class Node implements Runnable, Serializable{
 		}
 		else
 			System.out.println("Ring already created.");
+		stabilize(this);
 	}
 
 	public Hashtable<Integer, File> getFileList() {
@@ -258,16 +285,17 @@ public class Node implements Runnable, Serializable{
 	@Override
 	public void run() {
 		try {
-
 			ServerSocket server;
 			server = new ServerSocket(port);
 
 			Executor executor = Executors.newFixedThreadPool(100);
 
-			while(true)
-				executor.execute(new ServerHandler(server.accept(), this, m));
+			while(true) {
+				Socket client = server.accept();
+				executor.execute(new ServerHandler(client, this, m));
+			}
 		} catch (IOException e) {
-			System.err.println("Connection error! " + this.getId());
+			System.err.println("Connection error! " + this.toString());
 			e.printStackTrace();
 		}
 	}
@@ -334,6 +362,10 @@ public class Node implements Runnable, Serializable{
 
 	public void setId(int id) {
 		this.id = id;
+	}
+
+	public String toString() {
+		return "Node[port="+ port + ", id=" + id + "]"; 
 	}
 
 }
