@@ -16,11 +16,11 @@ public class Init {
 			}
 		}
 		nodes[0].create();		//node[0] create a Chord ring
-		nodes[0].addFile();		
-		nodes[0].addFile();
+		//nodes[0].addFile();		
+		//nodes[0].addFile();
 		nodes[2].join();
-		nodes[3].join();
-		nodes[3].addFile();
+		//nodes[3].join();
+		//nodes[2].addFile();
 	}
 }
 

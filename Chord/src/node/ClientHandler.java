@@ -7,7 +7,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.HashSet;
 
-public class ClientHandler implements Runnable {
+public class ClientHandler {
 
 	private int port;
 	private HashSet<InetSocketAddress> set;
@@ -18,8 +18,7 @@ public class ClientHandler implements Runnable {
 	}
 
 	@SuppressWarnings("unchecked")
-	@Override
-	public void run() {
+	public void joinServer() throws IOException {
 		Socket client = null;
 		ObjectOutputStream out = null;
 		ObjectInputStream in = null;
@@ -31,19 +30,14 @@ public class ClientHandler implements Runnable {
 			in = new ObjectInputStream(client.getInputStream());
 
 			out.writeObject(new InetSocketAddress(port));
-			set = (HashSet<InetSocketAddress>) in.readObject();
+
+			synchronized (this) {
+				set = (HashSet<InetSocketAddress>) in.readObject();
+			}
+			System.out.println(set);
 		} catch (IOException | ClassNotFoundException e) {
 			e.printStackTrace();
-		}	finally {
-			try {
-				if(!client.isClosed())
-					client.close();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-		//contact joinserver
+		}	
 		System.out.println("Node[" + port + "] - Network: " + set.toString());
 	}
 }

@@ -29,7 +29,6 @@ class ServerHandler implements Runnable {
 	public void run() {
 		try {
 			Request request = (Request) in.readObject();
-
 			System.out.println("Node[" + request.getClient_port() + "]: contacts ServerSide of Node[" + n.getPort() + "] for " + request.getRequest());
 
 			switch(request.getRequest()) {
