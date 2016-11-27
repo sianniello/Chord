@@ -51,7 +51,6 @@ public class Node implements Runnable, Serializable{
 		id = Hashing.consistentHash(port, m);
 		set = new HashSet<>();
 		this.port = port;
-		joinServer();
 		succ = null;
 		fileList = new Hashtable<>();
 	}
@@ -59,22 +58,6 @@ public class Node implements Runnable, Serializable{
 	public Node() throws IOException, ClassNotFoundException {
 		id = new Random().nextInt(10 + 1);
 		succ = null;
-	}
-
-
-	@SuppressWarnings("unchecked")
-	private void joinServer() throws UnknownHostException, IOException, ClassNotFoundException {
-		Socket client = null;
-		ObjectOutputStream out = null;
-		ObjectInputStream in = null;
-
-		client = new Socket("localhost", 1099);	//contact joinserver
-		out = new ObjectOutputStream(client.getOutputStream());
-		in = new ObjectInputStream(client.getInputStream());
-
-		out.writeObject(new InetSocketAddress(port));
-		set = (HashSet<InetSocketAddress>) in.readObject();
-		System.out.println("Node[" + port + "] - Network: " + set.toString());
 	}
 
 	/**
@@ -107,6 +90,8 @@ public class Node implements Runnable, Serializable{
 							out.writeObject(req);
 							out.flush();
 							Node x = (Node) in.readObject();
+
+							client.close();
 
 							if(x != null)
 								if((x.getId() > node.getId() && x.getId() < node.getSucc().getId()) ||
@@ -144,19 +129,20 @@ public class Node implements Runnable, Serializable{
 	}
 
 	protected void checkPredecessor() {
-		try {
-			if(pred != null) {
-				Socket client = new Socket("localhost", pred.getPort());
-				if(!client.isConnected())
-					setPred(null);
+		Socket client = null;
+		if(pred != null) {
+			try {
+				client = new Socket("localhost", pred.getPort());
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			if(!client.isConnected())
+				setPred(null);
 		}
 	}
 
-	protected void notifySucc(Node node) throws IOException {
+	protected void notifySucc(Node node) {
 
 		Socket client = null;
 		ObjectOutputStream out = null;
@@ -226,29 +212,50 @@ public class Node implements Runnable, Serializable{
 		}
 	}
 
-	public void addFile() throws IOException {
-		File file = new RandomFile().getFile();
-		Socket client = new Socket("localhost", this.getPort());
-		ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
-		ObjectInputStream in = new ObjectInputStream(client.getInputStream());
-
-		Request req = new Request(this.getPort(), find_successor, this);
-
-		out.writeObject(req);
-
+	public void addFile() {
+		Socket client = null;
+		ObjectOutputStream out = null;
+		ObjectInputStream in = null;
 		Node k = null;
 		try {
+			client = new Socket("localhost", this.getPort());
+			out = new ObjectOutputStream(client.getOutputStream());
+			in = new ObjectInputStream(client.getInputStream());
+
+			Request req = new Request(this.getPort(), find_successor, this);
+
+			out.writeObject(req);
 			k = (Node) in.readObject();
-		} catch (ClassNotFoundException e) {
+
+		} catch (IOException | ClassNotFoundException e) {
 			e.printStackTrace();
+		} finally {
+			if(!client.isClosed())
+				try {
+					client.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 		}
+		File file;
+		try {
+			file = new RandomFile().getFile();
 
-		client = new Socket("localhost", k.getPort());
-		out = new ObjectOutputStream(client.getOutputStream());
+			client = new Socket("localhost", k.getPort());
+			out = new ObjectOutputStream(client.getOutputStream());
 
-		req = new Request(port, add_file, file);
-		out.writeObject(req);
-
+			Request req = new Request(port, add_file, file);
+			out.writeObject(req);
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			if(!client.isClosed())
+				try {
+					client.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+		}
 	}
 
 	/**
@@ -287,6 +294,8 @@ public class Node implements Runnable, Serializable{
 		try {
 			ServerSocket server;
 			server = new ServerSocket(port);
+			
+			new ClientHandler(port, set).run();
 
 			Executor executor = Executors.newFixedThreadPool(100);
 

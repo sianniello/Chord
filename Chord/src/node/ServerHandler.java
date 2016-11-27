@@ -9,8 +9,8 @@ import com.google.common.hash.Hashing;
 
 class ServerHandler implements Runnable {
 
-	private ObjectOutputStream out;
-	private ObjectInputStream in;
+	private ObjectOutputStream out = null;
+	private ObjectInputStream in = null;
 	private Node n;
 	private int m;
 

@@ -1,7 +1,11 @@
 package node;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.net.Socket;
 
 @SuppressWarnings("serial")
 public class Request implements Serializable{
@@ -9,13 +13,13 @@ public class Request implements Serializable{
 	private int request;
 	private Node node;
 	private File file;
-	
+
 	public Request (int client_port, int request, Node node) {
 		this.client_port = client_port;
 		this.request = request;
 		this.node = node;
 	}
-	
+
 	public Request(int port, int addFile, File file) {
 		client_port = port;
 		request = addFile;
@@ -48,7 +52,7 @@ public class Request implements Serializable{
 	public void setFile(File file) {
 		this.file = file;
 	}
-	
+
 	public String toString() {
 		return client_port + "|" + request + "|" + (file != null ? file.getName() : node.toString());
 	}
