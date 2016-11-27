@@ -9,7 +9,6 @@ import com.google.common.hash.Hashing;
 
 class ServerHandler implements Runnable {
 
-	@SuppressWarnings("unused")
 	private Socket client;
 	private ObjectOutputStream out;
 	private ObjectInputStream in;
@@ -24,6 +23,10 @@ class ServerHandler implements Runnable {
 		this.m = m;
 	}
 
+	public ServerHandler(Node n) throws IOException {
+		this.n = n;
+	}
+
 	@Override
 	public void run() {
 		int client_port = 0;
@@ -35,7 +38,7 @@ class ServerHandler implements Runnable {
 			case 2: //join
 				int client_id = Hashing.consistentHash(client_port, m);
 				System.out.println("Node[" + n.getId() + "]: Node[" + client_id + "] requests join.");
-				
+
 				if(client_id == n.getId())
 					out.writeObject(null);
 				else if(n.getSucc() != null) {	//if ring exist
@@ -62,6 +65,7 @@ class ServerHandler implements Runnable {
 				out.writeObject(findSuccessor(id));
 				break;
 			}
+			client.close();
 		} catch (IOException | ClassNotFoundException e) {
 			System.err.println("Connection lost!");
 			e.printStackTrace();
@@ -82,9 +86,9 @@ class ServerHandler implements Runnable {
 	}
 
 	public Node findSuccessor(Node node) {
-		if(n.getId() == n.getSucc().getId()) 
+		if(n.getId() == n.getSucc().getId() || node.getId() == n.getId()) 
 			return n;
-		else if (n.getId() < node.getId() && node.getId() <= n.getSucc().getId())
+		else if (n.getId() > n.getSucc().getId() && n.getId() < node.getId())
 			return n.getSucc();
 		else return findSuccessor(n.getSucc());
 	}
