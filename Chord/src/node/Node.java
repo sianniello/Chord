@@ -9,17 +9,13 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
-import java.util.LinkedList;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import com.google.common.hash.Hashing;
-import com.sun.security.ntlm.Client;
-
 import randomFile.RandomFile;
 
 /**
@@ -37,7 +33,7 @@ public class Node implements Runnable, Serializable{
 	public static final int stabilize = 6;
 	public static final int find_successor = 7;
 
-	private Node succ, pred;
+	private Node succ, succ2, pred;
 	private final static int m = 8;		//keys/ID space
 	private static final int p = 3;		//finger table's entries
 	private int id;
@@ -53,12 +49,14 @@ public class Node implements Runnable, Serializable{
 		this.port = port;
 		joinServer();
 		succ = null;
+		succ2 = null;
 		fileList = new Hashtable<>();
 	}
 
 	public Node() throws IOException, ClassNotFoundException {
 		id = new Random().nextInt(10 + 1);
 		succ = null;
+		succ2 = null;
 	}
 
 
@@ -87,6 +85,7 @@ public class Node implements Runnable, Serializable{
 	 */
 	public void stabilize(Node node) {
 		new Thread(new Runnable() {
+			@SuppressWarnings("resource")
 			@Override
 			public void run() {
 
@@ -99,6 +98,8 @@ public class Node implements Runnable, Serializable{
 						System.out.println("Node[" + node.getId() + "] - Ring stabilization routine...");
 						try {
 							client = new Socket("localhost", node.getSucc().getPort());
+							if (!client.isConnected())
+								client = new Socket("localhost", node.getSucc2().getPort());
 							out = new ObjectOutputStream(client.getOutputStream());
 							in = new ObjectInputStream(client.getInputStream());
 
@@ -203,6 +204,7 @@ public class Node implements Runnable, Serializable{
 					out.writeObject(req);
 					out.flush();
 					succ = (Node) in.readObject();
+					succ2 = succ.getSucc();
 					pred = null;
 
 				}catch (IOException | ClassNotFoundException e) {
@@ -334,6 +336,14 @@ public class Node implements Runnable, Serializable{
 
 	public void setSucc(Node succ) {
 		this.succ = succ;
+	}
+
+	public Node getSucc2() {
+		return succ2;
+	}
+
+	public void setSucc2(Node succ) {
+		this.succ2 = succ;
 	}
 
 	public Node getPred() {

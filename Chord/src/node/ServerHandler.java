@@ -41,6 +41,7 @@ class ServerHandler implements Runnable {
 					out.writeObject(findSuccessor(node));	//send new node its successor
 					if(n.getSucc().getId() == n.getId()) {
 						n.setSucc(node);
+						n.setSucc2(node.getSucc());
 						System.out.println("Node[" + n.getId() + "] - Successor updated: " + n.getSucc().getId());
 					}
 				}
