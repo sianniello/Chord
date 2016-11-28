@@ -38,10 +38,9 @@ class ServerHandler implements Runnable {
 
 				if(n.getSucc() != null) {	//if ring exist
 					Node node = request.getNode();
-					out.writeObject(findSuccessor(node));	//send new node its successor
+					out.writeObject(n.findSuccessor(node.getId()));	//send new node its successor
 					if(n.getSucc().getId() == n.getId()) {
 						n.setSucc(node);
-						n.setSucc2(node.getSucc());
 						System.out.println("Node[" + n.getId() + "] - Successor updated: " + n.getSucc().getId());
 					}
 				}
@@ -62,8 +61,8 @@ class ServerHandler implements Runnable {
 				out.flush();
 				break;
 			case 7:	//find_successor
-				Node id = request.getNode();
-				out.writeObject(findSuccessor(id));
+				Node node = request.getNode();
+				out.writeObject(n.findSuccessor(node.getId()));
 				out.flush();
 				break;
 			}
@@ -85,11 +84,4 @@ class ServerHandler implements Runnable {
 		}
 	}
 
-	public Node findSuccessor(Node node) {
-		if(n.getId() == n.getSucc().getId() || node.getId() == n.getId()) 
-			return n;
-		else if (n.getId() > n.getSucc().getId() && n.getId() < node.getId())
-			return n.getSucc();
-		else return findSuccessor(n.getSucc());
-	}
 }
