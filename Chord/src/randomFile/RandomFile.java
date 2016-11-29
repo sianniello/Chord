@@ -5,13 +5,12 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Random;
-import java.util.concurrent.ThreadLocalRandom;
 
 public class RandomFile {
 
 	private File file;
 	private static int k = 0;
-	private final static int l = 1000000;
+	private final static int l = 10000;
 
 	public RandomFile() throws IOException {
 		Random r = new Random();

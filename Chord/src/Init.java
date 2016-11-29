@@ -5,7 +5,7 @@ import node.Node;
 
 public class Init {
 
-	public static void main(String[] args) throws IOException, ClassNotFoundException {
+	public static void main(String[] args) throws IOException, ClassNotFoundException, InterruptedException {
 		Node[] nodes = new Node[Integer.parseInt(args[0])];
 		
 		//10 nodes creation
@@ -21,8 +21,11 @@ public class Init {
 		nodes[0].create();		//node[0] create a Chord ring
 		//s.nextLine();
 		nodes[0].addFile();		
-		//nodes[0].addFile();
+		nodes[0].addFile();
 		nodes[2].join();
+		s.nextLine();
+		nodes[2].addFile();
+		s.nextLine();
 		nodes[3].join();
 		//nodes[2].addFile();
 		s.close();

@@ -9,6 +9,11 @@ import com.google.common.hash.Hashing;
 
 class ServerHandler implements Runnable {
 
+	public static final int add_file = 3;
+	public static final int join = 2;
+	public static final int stabilize = 6;
+	public static final int find_successor = 7;
+
 	private ObjectOutputStream out = null;
 	private ObjectInputStream in = null;
 	private Node n;
@@ -29,47 +34,40 @@ class ServerHandler implements Runnable {
 	public void run() {
 		try {
 			Request request = (Request) in.readObject();
-			System.out.println("Node[" + request.getClient_port() + "]: contacts ServerSide of Node[" + n.getPort() + "] for " + request.getRequest());
-
+			System.out.println("Node[" + n.getId() + "]: " + request.toString());
 			switch(request.getRequest()) {
-			case 2: //join
-				int client_id = Hashing.consistentHash(request.getClient_port(), m);
-				System.out.println("Node[" + n.getId() + "]: Node[" + client_id + "] requests join.");
+			case join: //join
+				int client_id = Hashing.consistentHash(request.getNode().getPort(), m);
+				System.out.println("Node[" + n.getId() + "]: Node[" + client_id + "]: Requests join.");
 
 				if(n.getSucc() != null) {	//if ring exist
 					Node node = request.getNode();
 					out.writeObject(n.findSuccessor(node.getId()));	//send new node its successor
-					if(n.getSucc().getId() == n.getId()) {
-						n.setSucc(node);
-						System.out.println("Node[" + n.getId() + "] - Successor updated: " + n.getSucc().getId());
-					}
 				}
 				else
 					out.writeObject(null);
-				out.flush();
 				break;
-			case 3: //add file
+			case add_file:
+				System.out.println("Node[" + n.getId() + "]: Add file.");
 				File file = request.getFile();
 				addFile(file);
-				out.flush();
 				break;
-			case 5:	//notify
-				succNotify(request.getNode());
-				break;
-			case 6:	//stabilize
-				out.writeObject(n.getPred());
-				out.flush();
-				break;
-			case 7:	//find_successor
+			case stabilize:
+				while(true) {
+					out.writeObject(n.getPred());
+					succNotify(request.getNode());
+				}
+			case find_successor:
 				Node node = request.getNode();
 				out.writeObject(n.findSuccessor(node.getId()));
-				out.flush();
+				break;
+			default:
 				break;
 			}
 		} catch (IOException | ClassNotFoundException e) {
-			System.err.println("Connection lost!");
-			e.printStackTrace();
-		}
+			//System.err.println("Connection lost!" + n.toString());
+			//e.printStackTrace();
+		} 
 	}
 
 	private void addFile(File file) throws ClassNotFoundException, IOException {
@@ -78,10 +76,11 @@ class ServerHandler implements Runnable {
 	}
 
 	private void succNotify(Node n1) {
-		if((n.getPred() == null || n.getPred().getId() == n.getId()) || (n1.getId() > n.getPred().getId() && n1.getId() < n.getId())) {
-			n.setPred(n1);
-			System.out.println("Node[" + n.getId() + "] - Successor is " + n.getSucc().getId() + ", Predecessor is " + n.getPred().getId());
-		}
+		if(n1.getId() != n.getId())
+			if(n.getPred() == null || (n.getPred().getId() + m - n.getId())%m < (n1.getId() + m - n.getId())%m) {
+				n.setPred(n1);
+				System.out.println("Node[" + n.getId() + "]: Predecessor is " + n.getPred().getId());
+			}
 	}
 
 }
