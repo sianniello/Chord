@@ -75,9 +75,7 @@ public class Node implements Runnable, Serializable{
 	}
 
 	public Node findSuccessor(int id) {
-		if(this.getId() == this.getSucc().getId())
-			return this;
-		else if((this.getSucc().getId() + m - this.getId())%m >= (id + m - this.getId())%m)
+		if((this.getSucc().getId() + m - this.getId())%m >= (id + m - this.getId())%m || this.getId() == this.getSucc().getId())
 			return this.getSucc();
 		else return this.getSucc().findSuccessor(id);
 	}
@@ -99,27 +97,36 @@ public class Node implements Runnable, Serializable{
 			@Override
 			public void run() {
 				try {
-					while(true) {
+					client = new Socket("localhost", node.getSucc().getPort());
+					if(!client.isConnected())
+						client = new Socket("localhost", node.getSucc().getSucc().getPort());
+					out = new ObjectOutputStream(client.getOutputStream());
+					in = new ObjectInputStream(client.getInputStream());
+
+					out.writeObject(new Request(stabilize, node));
+
+					while(client.isConnected()) {
 						System.out.println(node.toString() + ": Ring stabilization routine...");
-						client = new Socket("localhost", node.getSucc().getPort());
-						if(!client.isConnected())
-							client = new Socket("localhost", node.getSucc().getSucc().getPort());
 
-						out = new ObjectOutputStream(client.getOutputStream());
-						in = new ObjectInputStream(client.getInputStream());
-
-						out.writeObject(new Request(stabilize, node));
 						Node x = (Node) in.readObject();
 
-						if(x != null && (node.getSucc().getId() + m - node.getId())%m > (x.getId() + m - node.getId())%m)
+						if(x != null && ((node.getId() < (x.getId() + m - node.getId())%m && (x.getId() + m - node.getId())%m < (node.getSucc().getId() + m - node.getId())%m) ||
+								node.getId() == node.getSucc().getId())) {
 							node.setSucc(x);
-						client.close();
 
+							out.writeObject(null);
+
+							client.close();
+							client = new Socket("localhost", node.getSucc().getPort());
+							if(!client.isConnected())
+								client = new Socket("localhost", node.getSucc().getSucc().getPort());
+							out = new ObjectOutputStream(client.getOutputStream());
+							in = new ObjectInputStream(client.getInputStream());
+							out.writeObject(new Request(stabilize, node));
+							Node dummy = (Node) in.readObject();
+						}
 						//notify
-						client = new Socket("localhost", node.getSucc().getPort());
-						out = new ObjectOutputStream(client.getOutputStream());
-						out.writeObject(new Request(notify, node));
-						client.close();
+						out.writeObject(node);
 
 						checkPredecessor(node);
 						Thread.sleep(new Random().nextInt(5000) + 2000);
@@ -339,7 +346,12 @@ public class Node implements Runnable, Serializable{
 	}
 
 	public String toString() {
-		return "Node[port="+ port + ", id=" + id + "]"; 
+		if(pred == null && succ != null)
+			return "Node[port="+ port + ", ID=" + id + ", SuccID=" + succ.getId() + ", PredID=null]";
+		else if(pred == null && succ == null)
+			return "Node[port="+ port + ", ID=" + id + ", SuccID=null , PredID=null]"; 
+		else
+			return "Node[port="+ port + ", ID=" + id + ", SuccID=" + succ.getId() + ", PredID=" + pred.getId() + "]"; 
 	}
 
 }

@@ -53,12 +53,13 @@ class ServerHandler implements Runnable {
 				File file = request.getFile();
 				addFile(file);
 				break;
-			case stabilize: 
-				out.writeObject(n.getPred());
-				break;
-			case notify:
-				succNotify(request.getNode());
-				break;
+			case stabilize:
+				Node n1 = null;
+				do {
+					out.writeObject(n.getPred());
+					n1 = (Node) in.readObject();
+					succNotify(n1);
+				} while(n1 != null);
 			case find_successor:
 				Node node = request.getNode();
 				out.writeObject(n.findSuccessor(node.getId()));
@@ -78,11 +79,12 @@ class ServerHandler implements Runnable {
 	}
 
 	private void succNotify(Node n1) {
-		if(n1.getId() != n.getId())
-			if(n.getPred() == null || (n.getPred().getId() + m - n.getId())%m < (n1.getId() + m - n.getId())%m) {
-				n.setPred(n1);
-				System.out.println("Node[" + n.getId() + "]: Predecessor changed now its " + n.getPred().getId());
-			}
+		if(n1 != null)
+			if(n1.getId() != n.getId())
+				if(n.getPred() == null || (n.getPred().getId() + m - n.getId())%m < (n1.getId() + m - n.getId())%m) {
+					n.setPred(n1);
+					System.out.println("Node[" + n.getId() + "]: Predecessor changed now its " + n.getPred().getId());
+				}
 	}
 
 }
