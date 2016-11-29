@@ -13,6 +13,7 @@ class ServerHandler implements Runnable {
 	public static final int join = 2;
 	public static final int stabilize = 6;
 	public static final int find_successor = 7;
+	private static final int notify = 0;
 
 	private ObjectOutputStream out = null;
 	private ObjectInputStream in = null;
@@ -52,11 +53,12 @@ class ServerHandler implements Runnable {
 				File file = request.getFile();
 				addFile(file);
 				break;
-			case stabilize:
-				while(true) {
-					out.writeObject(n.getPred());
-					succNotify(request.getNode());
-				}
+			case stabilize: 
+				out.writeObject(n.getPred());
+				break;
+			case notify:
+				succNotify(request.getNode());
+				break;
 			case find_successor:
 				Node node = request.getNode();
 				out.writeObject(n.findSuccessor(node.getId()));
@@ -79,7 +81,7 @@ class ServerHandler implements Runnable {
 		if(n1.getId() != n.getId())
 			if(n.getPred() == null || (n.getPred().getId() + m - n.getId())%m < (n1.getId() + m - n.getId())%m) {
 				n.setPred(n1);
-				System.out.println("Node[" + n.getId() + "]: Predecessor is " + n.getPred().getId());
+				System.out.println("Node[" + n.getId() + "]: Predecessor changed now its " + n.getPred().getId());
 			}
 	}
 

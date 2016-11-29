@@ -22,7 +22,7 @@ public class Init {
 		//s.nextLine();
 		nodes[0].addFile();		
 		nodes[0].addFile();
-		nodes[2].join();
+		//nodes[2].join();
 		s.nextLine();
 		nodes[2].addFile();
 		s.nextLine();

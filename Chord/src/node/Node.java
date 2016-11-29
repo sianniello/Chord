@@ -99,41 +99,32 @@ public class Node implements Runnable, Serializable{
 			@Override
 			public void run() {
 				try {
-					client = new Socket("localhost", node.getSucc().getPort());
-					if(!client.isConnected())
-						client = new Socket("localhost", node.getSucc().getSucc().getPort());
-
-					out = new ObjectOutputStream(client.getOutputStream());
-					in = new ObjectInputStream(client.getInputStream());
-
 					while(true) {
-						System.out.println("Node[" + node.getId() + "]: Ring stabilization routine...");
-						if(node.getId() != node.getSucc().getId() || node.getPred() != null) {
-							//receive predecessor of successor
-							out.writeObject(new Request(stabilize, node));
-							Node x = (Node) in.readObject();
-							if(x != null)
-								if((node.getSucc().getId() + m - node.getId())%m > x.getId() + m - node.getId() || node.getId() == node.getSucc().getId()) {
-									node.setSucc(x);
-									in.close();
-									out.close();
-									client.close();
-									client = new Socket("localhost", node.getSucc().getPort());
-									out = new ObjectOutputStream(client.getOutputStream());
-									in = new ObjectInputStream(client.getInputStream());
-									out.writeObject(new Request(stabilize, node));
-									x = (Node) in.readObject();
-									System.out.println("Node[" + node.getId() + "]: Successor updated: " + node.getSucc().getId());
-								}
+						System.out.println(node.toString() + ": Ring stabilization routine...");
+						client = new Socket("localhost", node.getSucc().getPort());
+						if(!client.isConnected())
+							client = new Socket("localhost", node.getSucc().getSucc().getPort());
 
-							System.out.println("Node[" + node.getId() + "]: Successor is " + node.getSucc().getId() + 
-									", Predecessor is " + (node.getPred() != null ? node.getPred().getId() : null));
-						}
-						out.writeObject(new Request(0));
+						out = new ObjectOutputStream(client.getOutputStream());
+						in = new ObjectInputStream(client.getInputStream());
+
+						out.writeObject(new Request(stabilize, node));
+						Node x = (Node) in.readObject();
+
+						if(x != null && (node.getSucc().getId() + m - node.getId())%m > (x.getId() + m - node.getId())%m)
+							node.setSucc(x);
+						client.close();
+
+						//notify
+						client = new Socket("localhost", node.getSucc().getPort());
+						out = new ObjectOutputStream(client.getOutputStream());
+						out.writeObject(new Request(notify, node));
+						client.close();
+
 						checkPredecessor(node);
 						Thread.sleep(new Random().nextInt(5000) + 2000);
 					}
-				} catch (IOException | ClassNotFoundException | InterruptedException e) {
+				} catch (IOException | InterruptedException | ClassNotFoundException e) {
 					e.printStackTrace();
 				}
 			}
