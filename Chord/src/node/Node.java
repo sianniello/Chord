@@ -88,8 +88,9 @@ public class Node implements Runnable, Serializable{
 				while(true) {
 					try {
 						Forwarder f = new Forwarder();
-						Request req = new Request(node.getSucc().getPort(), Request.stabilize, node);
+						Request req = new Request(node.getSucc().getPort(), Request.stabilize_request, node);
 						f.send(req);
+						System.out.println(node.toString() + ": stabilization routine...");
 						Thread.sleep(new Random().nextInt(5000) + 2000);
 					} catch (InterruptedException | IOException e) {
 						e.printStackTrace();
@@ -99,11 +100,36 @@ public class Node implements Runnable, Serializable{
 		}).start();
 	}
 
-	protected void neighborUpdate(Node down) {
-		if(succ.getId() == down.getId())
-			succ = down.getSucc();
-		if(pred.getId() == down.getId())
-			pred = down.getPred();
+	public void check_predecessor(Node node) {
+		new Thread(new Runnable() {
+
+			@Override
+			public void run() {
+				Socket client;
+				while(true)
+					try {
+						client = new Socket("localhost", node.getPred().getPort());
+						if(client.isConnected()) {
+							ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
+							out.writeObject(new Request(node.getPred().getPort()));
+							client.close();
+						}
+						else {
+							//keys and file ridistribution
+							node.getFileList().putAll(node.getPred().getFileList());
+							node.setPred(null);
+							synchronized (this) {
+								node.getRing().remove(node.getPred().getId());
+							}
+						}
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+
+
+			}
+		}).start();
 	}
 
 	public int getPort() {

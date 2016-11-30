@@ -35,10 +35,12 @@ class ServerHandler implements Runnable {
 			switch(request.getRequest()) {
 			case Request.save_file:
 				n.getFileList().put(n.getId(), request.getFile());
-				System.out.println("Node[" + n.getId() + "]: save file " + request.getFile().getName());
+				System.out.println(n.toString() + ": save file " + request.getFile().getName());
 				break;
+
+				//a new node request join to a ring's node. It send back successor of new node
 			case Request.join_request:
-				System.out.println("Node[" + n.getId() + "]: received a join request");
+				System.out.println(n.toString() + ": received a join request");
 				Node succ = findSuccessor(request.getNode().getId());
 				if(!n.getRing().containsKey(request.getNode().getId()))
 					synchronized (this) {
@@ -47,43 +49,40 @@ class ServerHandler implements Runnable {
 				new Forwarder().send(new Request(request.getNode().getPort(), Request.join, succ));
 				n.stabilize(n);
 				break;
-				
+
+				//joined node update his succ and start stabilization routine
 			case Request.join:
-				System.out.println(n.toString() + ": join ring");
 				n.setSucc(request.getNode());
 				n.setPred(null);
+				System.out.println(n.toString() + ": join ring");
 				n.stabilize(n);
 				break;
-				
+
+				//node send stabilization request to his successor
 			case Request.stabilize_request:
 				Forwarder f = new Forwarder();
 				Request req = new Request(request.getNode().getPort(), Request.stabilize, n.getPred());
 				f.send(req);
 				break;
-				
+
+				//successor sent back his predecessor
 			case Request.stabilize:
 				Node x = request.getNode();
-				if((n.getSucc().getId() - n.getId() + m)%m > (x.getId() - n.getId() + m)%m) {
+				if(x != null && ((n.getSucc().getId() - n.getId() + m)%m > (x.getId() - n.getId() + m)%m)) {
 					n.setSucc(x);
-					synchronized (this) {
-						n.getRing().replace(n.getId(), n);
-					}
-					System.out.println("Node[" + n.getId() + "]: Successor updated, now it's " + n.getSucc().getId());
+					System.out.println(n.toString() + ": Successor updated, now it's " + n.getSucc().getId());
 				}
 				notifySuccessor();
 				break;
-				
+
 			case Request.notify:
 				x = request.getNode();
-				if(n.getPred() == null || ((n.getPred().getId() - n.getId() + m)%m < (x.getId() - n.getId() + m)%m)) {
-					n.setPred(x);
-					synchronized (this) {
-						n.getRing().replace(n.getId(), n);
+					if(n.getPred() == null || ((n.getPred().getId() - n.getId() + m)%m < (x.getId() - n.getId() + m)%m)) {
+						n.setPred(x);
+						System.out.println(n.toString() + ": Predecessor updated, now it's " + n.getPred().getId());
 					}
-					System.out.println("Node[" + n.getId() + "]: Predecessor updated, now it's " + n.getPred().getId());
-				}
 				break;
-				
+
 			default:
 				break;
 			}

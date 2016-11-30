@@ -23,7 +23,8 @@ public class Forwarder {
 	}
 
 	/**
-	 * Spedizione di un messaggio semplice attraverso una data porta.
+	 * Simple request delivery via port
+	 * in stabilization routine if successor is offline the request is forwarded to successor of successor
 	 *
 	 * @param message
 	 * @param port
@@ -31,10 +32,24 @@ public class Forwarder {
 	 */
 	@SuppressWarnings({ "unqualified-field-access" })
 	public void send(Request request) throws IOException {
-		Socket client = new Socket("localhost", request.getPort());
-		out = new ObjectOutputStream(client.getOutputStream());
-		out.writeObject(request);
-		client.close();
+
+		//Fail management in stabilize routine
+		if (request.getRequest() == Request.stabilize) {
+			Socket client = new Socket("localhost", request.getPort());
+			if(!client.isConnected()) {
+				client.close();
+				client = new Socket("localhost", request.getNode().getSucc().getPort());
+			}
+			out = new ObjectOutputStream(client.getOutputStream());
+			out.writeObject(request);
+			client.close();
+		}
+		else {
+			Socket client = new Socket("localhost", request.getPort());
+			out = new ObjectOutputStream(client.getOutputStream());
+			out.writeObject(request);
+			client.close();
+		}
 	}
 
 	/**
