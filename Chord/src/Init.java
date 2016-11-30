@@ -19,16 +19,10 @@ public class Init {
 		}
 		Scanner s = new Scanner(System.in);
 		nodes[0].create();		//node[0] create a Chord ring
-		//s.nextLine();
-		nodes[0].addFile();		
-		nodes[0].addFile();
+		nodes[0].saveFile();
+		nodes[2].join();
 		s.nextLine();
-		nodes[2].join(nodes[0]);
-		s.nextLine();
-		nodes[2].addFile();
-		//s.nextLine();
-		//nodes[3].join();
-		//nodes[2].addFile();
+		nodes[2].saveFile();
 		s.close();
 	}
 }

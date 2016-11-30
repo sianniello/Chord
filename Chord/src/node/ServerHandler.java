@@ -1,17 +1,11 @@
 package node;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
-import java.util.HashSet;
 import java.util.Hashtable;
-import java.util.Random;
-
-import com.google.common.hash.Hashing;
-
-import randomFile.RandomFile;
+import java.util.TreeMap;
 
 class ServerHandler implements Runnable {
 
@@ -19,9 +13,9 @@ class ServerHandler implements Runnable {
 	private ObjectInputStream in = null;
 	private Node n;
 	private int m;
-	private Hashtable<Integer, Node> ring;
+	private TreeMap<Integer, Node> ring;
 
-	public ServerHandler(Socket client, Node n, int m, Hashtable<Integer, Node> ring) throws IOException {
+	public ServerHandler(Socket client, Node n, int m, TreeMap<Integer, Node> ring) throws IOException {
 		out = new ObjectOutputStream(client.getOutputStream());
 		in = new ObjectInputStream(client.getInputStream());
 		this.n = n;
@@ -37,24 +31,59 @@ class ServerHandler implements Runnable {
 	public void run() {
 		try {
 			Request request = (Request) in.readObject();
-			System.out.println("Node[" + n.getId() + "]: new request");
-			
+
 			switch(request.getRequest()) {
-			case Request.add_file:
-				int k = request.getK();
-				Node n = find_successor(k);
+			case Request.save_file:
+				n.getFileList().put(n.getId(), request.getFile());
+				System.out.println("Node[" + n.getId() + "]: save file " + request.getFile().getName());
 				break;
-			case Request.notify:
-				if(ring.contains(request.getNode()))
+			case Request.join_request:
+				System.out.println("Node[" + n.getId() + "]: received a join request");
+				Node succ = findSuccessor(request.getNode().getId());
+				if(!n.getRing().containsKey(request.getNode().getId()))
 					synchronized (this) {
-						ring.remove(request.getNode());
-						ring.add(request.getNode());
+						n.getRing().put(request.getNode().getId(), request.getNode());
 					}
+				new Forwarder().send(new Request(request.getNode().getPort(), Request.join, succ));
+				n.stabilize(n);
 				break;
-			case Request.find_filek:
-				System.out.println("Node[" + n.getId() + "]: Find k.");
-				findSuccessor(request);
+				
+			case Request.join:
+				System.out.println(n.toString() + ": join ring");
+				n.setSucc(request.getNode());
+				n.setPred(null);
+				n.stabilize(n);
 				break;
+				
+			case Request.stabilize_request:
+				Forwarder f = new Forwarder();
+				Request req = new Request(request.getNode().getPort(), Request.stabilize, n.getPred());
+				f.send(req);
+				break;
+				
+			case Request.stabilize:
+				Node x = request.getNode();
+				if((n.getSucc().getId() - n.getId() + m)%m > (x.getId() - n.getId() + m)%m) {
+					n.setSucc(x);
+					synchronized (this) {
+						n.getRing().replace(n.getId(), n);
+					}
+					System.out.println("Node[" + n.getId() + "]: Successor updated, now it's " + n.getSucc().getId());
+				}
+				notifySuccessor();
+				break;
+				
+			case Request.notify:
+				x = request.getNode();
+				if(n.getPred() == null || ((n.getPred().getId() - n.getId() + m)%m < (x.getId() - n.getId() + m)%m)) {
+					n.setPred(x);
+					synchronized (this) {
+						n.getRing().replace(n.getId(), n);
+					}
+					System.out.println("Node[" + n.getId() + "]: Predecessor updated, now it's " + n.getPred().getId());
+				}
+				break;
+				
 			default:
 				break;
 			}
@@ -64,38 +93,17 @@ class ServerHandler implements Runnable {
 		} 
 	}
 
-	public Node findSuccessor(int id) {
-		ring.
-			for(Node n : ring) 
-				if((n.getSucc().getId() - n.getId() + m)%m > 
-				(n.getSucc().getId() - id + m)%m)
-					return n.getSucc();
-		}
-	
-	public void addFile() {
-		File file;
-		Socket client = null;
-		ObjectOutputStream out = null;
-		ObjectInputStream in = null;
-		Node k = null;
-		try {
-			client = new Socket("localhost", this.getPort());
-			out = new ObjectOutputStream(client.getOutputStream());
-			in = new ObjectInputStream(client.getInputStream());
+	private void notifySuccessor() throws IOException {
+		Forwarder f = new Forwarder();
+		Request req = new Request(n.getSucc().getPort(), Request.notify, n);
+		f.send(req);
+	}
 
-			out.writeObject(new Request(find_successor, this));
-			k = (Node) in.readObject();
-			client.close();
-			file = new RandomFile().getFile();
-
-			client = new Socket("localhost", k.getPort());
-			out = new ObjectOutputStream(client.getOutputStream());
-			out.writeObject(new Request(add_file, file));
-			out.close();
-			client.close();
-		} catch (IOException | ClassNotFoundException e) {
-			e.printStackTrace();
-		}
+	Node findSuccessor(int k) {
+		TreeMap<Integer, Node> aux = new TreeMap<>();
+		for(int id : ring.keySet())
+			aux.put((id - k + m)%m, ring.get(id));
+		return aux.get(aux.firstKey());
 	}
 
 }

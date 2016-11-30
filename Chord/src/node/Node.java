@@ -12,6 +12,7 @@ import java.net.UnknownHostException;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Random;
+import java.util.TreeMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -39,7 +40,7 @@ public class Node implements Runnable, Serializable{
 	private int port;
 	private HashSet<InetSocketAddress> set;		//Bottomlay network's addresses
 	private Hashtable<Integer, File> fileList;
-	private  static Hashtable<Integer, Node> ring = new Hashtable<>();
+	private  static TreeMap<Integer, Node> ring = new TreeMap<>();
 	private File file;
 
 	@SuppressWarnings({ "javadoc", "unqualified-field-access" })
@@ -85,23 +86,10 @@ public class Node implements Runnable, Serializable{
 		new Thread(new Runnable() {
 			public void run() {
 				while(true) {
-					Socket client = null;
-					ObjectOutputStream out;
-					System.out.println(node.toString() + ": Stabilization routine..." + ring.toString());
 					try {
-						for(int k : ring.keySet()) {
-							client = new Socket("localhost", ring.get(k).getPort());
-							if(client.isConnected()) {
-								out = new ObjectOutputStream(client.getOutputStream());
-								out.writeObject(new Request(stabilize));
-								client.close();
-								Thread.sleep(new Random().nextInt(500) + 100);
-							}
-							else {
-								ring.remove(node.getId());
-								neighborUpdate(node);
-							}
-						}
+						Forwarder f = new Forwarder();
+						Request req = new Request(node.getSucc().getPort(), Request.stabilize, node);
+						f.send(req);
 						Thread.sleep(new Random().nextInt(5000) + 2000);
 					} catch (InterruptedException | IOException e) {
 						e.printStackTrace();
@@ -128,41 +116,13 @@ public class Node implements Runnable, Serializable{
 	 * @throws ClassNotFoundException
 	 */
 	@SuppressWarnings({ "javadoc" })
-	public void join(Node node) throws IOException {
-		Socket client = null;
-		ObjectOutputStream out = null;
-		ObjectInputStream in = null;
-
-		try {
-			client = new Socket("localhost", node.getPort());
-
-			out = new ObjectOutputStream(client.getOutputStream());
-			in = new ObjectInputStream(client.getInputStream());
-
-			out.writeObject(new Request(join, this));
-			Node n = (Node) in.readObject();
-			succ = n;
-			pred = null;
-			ring = succ.getRing();
-			if(ring.contains(this))
-				ring.replace(this.getId(), this);
-			client.close();
-
-		}catch (IOException | ClassNotFoundException e) {
-			e.printStackTrace();
-		}
-
-		if(succ != null) {
-			System.out.println("Node[" + getId() + "]: Attached to ring." );
-			System.out.println("Node[" + getId() + "]: Successor is " + getSucc().getId());
-			stabilize(this);
-		}
-		else {
-			System.err.println("Node[" + getId() + "]: Request rejected." );
-		}
+	public void join() throws IOException {
+		Forwarder f = new Forwarder();
+		Request request = new Request(ring.get(ring.firstKey()).getPort(), Request.join_request, this);
+		f.send(request);
 	}
 
-	public Hashtable<Integer, Node> getRing() {
+	public TreeMap<Integer, Node> getRing() {
 		return ring;
 	}
 
@@ -175,8 +135,11 @@ public class Node implements Runnable, Serializable{
 		if(succ == null) {		//if succ == null ring isn't created yet
 			pred = null;
 			succ = this;
-			if(!ring.contains(this))
-				ring.put(this.getId(), this);
+			if(!ring.containsValue(this)) {
+				synchronized (this) {
+					ring.put(this.getId(), this);
+				}
+			}
 			System.out.println("Node[" + this.getId() + "]: Ring created.");
 			System.out.println(this.toString());
 			//stabilize(this);
@@ -189,17 +152,28 @@ public class Node implements Runnable, Serializable{
 		return fileList;
 	}
 
-	public void addFile() throws IOException {
+	public void saveFile() throws IOException {
 		file = new RandomFile().getFile();
 		int k = Hashing.consistentHash(file.hashCode(), m);
-
+		Node n = findSuccessor(k);
 		Forwarder f = new Forwarder();
-		Request request = new Request(Request.add_file, k, file);
+		Request request = new Request(n.getPort(), Request.save_file, file);
 		try {
 			f.send(request, this);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+
+	Node findSuccessor(int k) {
+		TreeMap<Integer, Node> aux = new TreeMap<>();
+		for(int id : ring.keySet())
+			aux.put((id - k + m)%m, ring.get(id));
+		return aux.get(aux.firstKey());
+	}
+
+	public void addToRing(Node n) {
+		ring.put(n.getId(), n);
 	}
 
 	/* (non-Javadoc)
