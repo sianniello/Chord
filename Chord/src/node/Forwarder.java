@@ -30,8 +30,8 @@ public class Forwarder {
 	 * @throws IOException
 	 */
 	@SuppressWarnings({ "unqualified-field-access" })
-	public void send(Request request, int port) throws IOException {
-		Socket client = new Socket("localhost", port);
+	public void send(Request request) throws IOException {
+		Socket client = new Socket("localhost", request.getPort());
 		out = new ObjectOutputStream(client.getOutputStream());
 		out.writeObject(request);
 		client.close();
