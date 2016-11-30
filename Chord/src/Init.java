@@ -20,6 +20,7 @@ public class Init {
 		Scanner s = new Scanner(System.in);
 		nodes[0].create();		//node[0] create a Chord ring
 		nodes[0].saveFile();
+		s.nextLine();
 		nodes[2].join();
 		s.nextLine();
 		nodes[2].saveFile();
