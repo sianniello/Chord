@@ -22,9 +22,9 @@ class ServerHandler implements Runnable {
 		this.m = m;
 		this.ring = ring;
 	}
-	
+
 	public ServerHandler() {
-		
+
 	}
 
 	public ServerHandler(Node n) throws IOException {
@@ -71,20 +71,22 @@ class ServerHandler implements Runnable {
 				//node receives his successor's predecessor called 'x', check it and notifyies his successor
 			case Request.stabilize:
 				Node x = request.getNode();
-				if(x != null && ((n.getSucc().getId() - n.getId() + m)%m > (x.getId() - n.getId() + m)%m) && (x.getId() != n.getId())) {
+				if(x != null && successor(n.getSucc().getId(), n.getId(), x.getId())) {
 					n.setSucc(x);
 					System.out.println(n.toString() + ": Successor updated, now it's " + n.getSucc().getId());
 				}
 				notifySuccessor();
 				break;
 
+				//node receive a notify message
 			case Request.notify:
 				x = request.getNode();
-				if(x.getId() != n.getId())
-					if(n.getPred() == null || ((n.getPred().getId() - n.getId() + m)%m < (x.getId() - n.getId() + m)%m)) {
-						n.setPred(x);
-						System.out.println(n.toString() + ": Predecessor updated, now it's " + n.getPred().getId());
-					}
+				if(n.getPred() != null && n.getPred().getId() == n.getId())
+					n.setPred(x);
+				if(n.getPred() == null || predecessor(n.getPred().getId(), x.getId(), n.getId())) {
+					n.setPred(x);
+					System.out.println(n.toString() + ": Predecessor updated, now it's " + n.getPred().getId());
+				}
 				break;
 
 			case Request.start_stabilize:
@@ -137,10 +139,17 @@ class ServerHandler implements Runnable {
 			}
 		}).start();
 	}
-	
+
 	boolean successor(int s, int n, int x) {
-		if(n == x) return false;
+		if(x == n || x == s) return false;
 		if((s - n + m)%m > (x - n + m)%m)
+			return true;
+		else return false;
+	}
+
+	boolean predecessor(int p, int x, int n) {
+		if(x == n || x == p) return false;
+		if((n - p + m)%m > (n - x + m)%m)
 			return true;
 		else return false;
 	}
