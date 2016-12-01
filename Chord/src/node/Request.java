@@ -18,6 +18,7 @@ public class Request implements Serializable{
 	public static final int find_successor_ = 6;
 	public static final int join_request = 7;
 	public static final int stabilize_request = 8;
+	public static final int start_stabilize = 9;
 	
 	private int port;
 	private int request;

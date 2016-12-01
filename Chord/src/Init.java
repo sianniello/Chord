@@ -24,6 +24,8 @@ public class Init {
 		nodes[2].join();
 		s.nextLine();
 		nodes[2].saveFile();
+		s.nextLine();
+		nodes[3].join();
 		s.close();
 	}
 }
