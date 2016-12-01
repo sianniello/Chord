@@ -42,6 +42,7 @@ public class Node implements Runnable, Serializable{
 	private Hashtable<Integer, File> fileList;
 	private  static TreeMap<Integer, Node> ring = new TreeMap<>();
 	private File file;
+	private boolean online;
 
 	@SuppressWarnings({ "javadoc", "unqualified-field-access" })
 	public Node(int port) throws IOException, ClassNotFoundException {
@@ -51,11 +52,13 @@ public class Node implements Runnable, Serializable{
 		joinServer();
 		succ = null;
 		fileList = new Hashtable<>();
+		online = true;
 	}
 
 	public Node() throws IOException, ClassNotFoundException {
 		id = new Random().nextInt(10 + 1);
 		succ = null;
+		online = true;
 	}
 
 
@@ -190,7 +193,7 @@ public class Node implements Runnable, Serializable{
 			server = new ServerSocket(port);
 
 			Executor executor = Executors.newFixedThreadPool(1000);
-			while(true) {
+			while(online) {
 				Socket client = server.accept();
 				executor.execute(new ServerHandler(client, this, m, ring));
 			}
@@ -247,6 +250,14 @@ public class Node implements Runnable, Serializable{
 			return "Node[port="+ port + ", ID=" + id + ", SuccID=null , PredID=null]"; 
 		else
 			return "Node[port="+ port + ", ID=" + id + ", SuccID=" + succ.getId() + ", PredID=" + pred.getId() + "]"; 
+	}
+
+	public boolean isOnline() {
+		return online;
+	}
+
+	public void setOnline(boolean online) {
+		this.online = online;
 	}
 
 }
