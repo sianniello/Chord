@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
-import java.util.Hashtable;
 import java.util.Random;
 import java.util.TreeMap;
 
@@ -13,7 +12,7 @@ class ServerHandler implements Runnable {
 	private ObjectOutputStream out = null;
 	private ObjectInputStream in = null;
 	private Node n;
-	private int m;
+	public int m;
 	private TreeMap<Integer, Node> ring;
 
 	public ServerHandler(Socket client, Node n, int m, TreeMap<Integer, Node> ring) throws IOException {
@@ -22,6 +21,10 @@ class ServerHandler implements Runnable {
 		this.n = n;
 		this.m = m;
 		this.ring = ring;
+	}
+	
+	public ServerHandler() {
+		
 	}
 
 	public ServerHandler(Node n) throws IOException {
@@ -68,7 +71,7 @@ class ServerHandler implements Runnable {
 				//node receives his successor's predecessor called 'x', check it and notifyies his successor
 			case Request.stabilize:
 				Node x = request.getNode();
-				if(x != null && ((n.getSucc().getId() - n.getId() + m)%m > (x.getId() - n.getId() + m)%m) && (x.getId() != n.getSucc().getId())) {
+				if(x != null && ((n.getSucc().getId() - n.getId() + m)%m > (x.getId() - n.getId() + m)%m) && (x.getId() != n.getId())) {
 					n.setSucc(x);
 					System.out.println(n.toString() + ": Successor updated, now it's " + n.getSucc().getId());
 				}
@@ -133,6 +136,13 @@ class ServerHandler implements Runnable {
 				}
 			}
 		}).start();
+	}
+	
+	boolean successor(int s, int n, int x) {
+		if(n == x) return false;
+		if((s - n + m)%m > (x - n + m)%m)
+			return true;
+		else return false;
 	}
 
 }
