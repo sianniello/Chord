@@ -20,7 +20,7 @@ import com.google.common.hash.Hashing;
 import randomFile.RandomFile;
 
 /**
- * TODO Put here a description of what this class does.
+ * This is the main class, its include client role
  *
  * @author Stefano.
  *         Created 23 nov 2016.
@@ -75,31 +75,6 @@ public class Node implements Runnable, Serializable{
 		System.out.println("Node[" + port + "] - Network: " + set.toString());
 	}
 
-	/**
-	 * called periodically. n asks the successor
-	 * about its predecessor, verifies if n's immediate
-	 * successor is consistent, and tells the successor about n
-	 * 
-	 * @param node
-	 */
-	public void stabilize(Node node) {
-		new Thread(new Runnable() {
-			public void run() {
-				while(true) {
-					try {
-						Forwarder f = new Forwarder();
-						Request req = new Request(node.getSucc().getPort(), Request.stabilize_request, node);
-						f.send(req);
-						System.out.println(node.toString() + ": stabilization routine...");
-						Thread.sleep(new Random().nextInt(5000) + 2000);
-					} catch (InterruptedException | IOException e) {
-						e.printStackTrace();
-					}
-				}
-			}
-		}).start();
-	}
-
 	public void check_predecessor(Node node) {
 		new Thread(new Runnable() {
 
@@ -123,7 +98,6 @@ public class Node implements Runnable, Serializable{
 							}
 						}
 					} catch (IOException e) {
-						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 
@@ -161,6 +135,9 @@ public class Node implements Runnable, Serializable{
 		if(succ == null) {		//if succ == null ring isn't created yet
 			pred = null;
 			succ = this;
+			Forwarder f = new Forwarder();
+			Request req = new Request(this.getPort(), Request.start_stabilize);
+			f.send(req);
 			if(!ring.containsValue(this)) {
 				synchronized (this) {
 					ring.put(this.getId(), this);
