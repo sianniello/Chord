@@ -30,12 +30,6 @@ import sun.font.CreatedFontTracker;
 @SuppressWarnings("serial")
 public class Node implements Runnable, Serializable{
 
-	protected static final int notify = 0;
-	public static final int add_file = 3;
-	public static final int join = 2;
-	public static final int stabilize = 6;
-	public static final int find_successor = 7;
-
 	private Node succ, pred;
 	private final static int m = 8;		//keys/ID space
 	private int id;
