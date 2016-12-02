@@ -16,14 +16,12 @@ class ServerHandler implements Runnable {
 	private ObjectInputStream in = null;
 	private static Node n;
 	public int m;
-	private TreeMap<Integer, Node> ring;
 	private Request req;
 
-	public ServerHandler(Socket client, Node n, int m, TreeMap<Integer, Node> ring) throws IOException {
+	public ServerHandler(Socket client, Node n, int m) throws IOException {
 		in = new ObjectInputStream(client.getInputStream());
 		this.n = n;
 		this.m = m;
-		this.ring = ring;
 	}
 
 	public ServerHandler() {
@@ -50,18 +48,18 @@ class ServerHandler implements Runnable {
 				else
 					new Forwarder().send(new Request(n.getSucc().getPort(), Request.addFile_REQ, request.getNode()));
 				break;
-				
+
 			case Request.addFile_RES:
 				n.saveFile(request.getNode());
 				break;
-				
+
 			case Request.addFile:
 				int key = request.getK();
 				n.getFileList().put(key, request.getFile());
 				System.out.println(n.toString() + ": save file " + request.getFile().getName() + " with key " + key);
 				System.out.println(n.toString() + ": Filelist " + n.getFileList().toString());
 				break;
-				
+
 				//a new node request join to a ring's node. It send back successor of new node
 			case Request.join_REQ:
 				System.out.println(n.toString() + ": received a join request from Node[" + request.getNode().getPort() + "]");
@@ -90,7 +88,7 @@ class ServerHandler implements Runnable {
 				break;
 
 				//node send stabilization request to his successor and it reply with his predecessor
-			case Request.stabilize_request:
+			case Request.stabilize_REQ:
 				Forwarder f = new Forwarder();
 				req = new Request(request.getNode().getPort(), Request.stabilize, n.getPred());
 				f.send(req);
@@ -141,16 +139,8 @@ class ServerHandler implements Runnable {
 			} catch (IOException e) {
 				System.err.println(n.getSucc().toString() + " HAS FAILED.");
 				//TODO recover routine
-				System.out.println(n.toString() + ": new successor is " + n.getSucc().toString());
 			}
 		}
-	}
-
-	Node findSuccessor(int k) {
-		TreeMap<Integer, Node> aux = new TreeMap<>();
-		for(int id : ring.keySet())
-			aux.put((id - k + m)%m, ring.get(id));
-		return aux.get(aux.firstKey());
 	}
 
 	/**
@@ -167,13 +157,12 @@ class ServerHandler implements Runnable {
 					node.setStabilization(true);
 					while(node.getStabilization() && node.isOnline()) {
 						Forwarder f = new Forwarder();
-						req = new Request(node.getSucc().getPort(), Request.stabilize_request, node);
+						req = new Request(node.getSucc().getPort(), Request.stabilize_REQ, node);
 						try {
 							f.send(req);
 						} catch (IOException e1) {
 							System.err.println(node.getSucc().toString() + " HAS FAILED.");
 							//TODO recover routine
-							System.out.println(node.toString() + ": new successor is " + node.getSucc().toString());
 						}
 
 						if(node.getPred() != null)
@@ -200,10 +189,6 @@ class ServerHandler implements Runnable {
 						Forwarder f = new Forwarder();
 						if(!f.sendCheck(req)) {
 							System.err.println(n.getPred().toString() + " HAS FAILED.");
-							if(n.getRing().containsKey(n.getPred().getId()))
-								synchronized (this) {
-									n.getRing().remove(n.getPred().getId());
-								}
 							n.getFileList().putAll(n.getPred().getFileList());
 							System.err.println(n.toString() + " file list recovered.");
 							n.setPred(null);
@@ -213,6 +198,10 @@ class ServerHandler implements Runnable {
 			}).run();
 	}
 
+
+	/**
+	 * this function 
+	 */
 	boolean successor(int s, int n, int x) {
 		if(x == n || x == s) return false;
 		if((s - n + m)%m > (x - n + m)%m || n == s)

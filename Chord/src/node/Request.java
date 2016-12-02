@@ -15,7 +15,7 @@ public class Request implements Serializable{
 	public static final int join_REQ = 4;
 	public static final int join_RES = 5;
 	public static final int start_stabilize = 6;
-	public static final int stabilize_request = 7;
+	public static final int stabilize_REQ = 7;
 	public static final int stabilize = 8;
 	public static final int notify = 9;
 	public static final int check_alive = 0;

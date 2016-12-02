@@ -37,7 +37,6 @@ public class Node implements Runnable, Serializable{
 	private ClientHandler ch;
 	private HashSet<InetSocketAddress> set;		//Bottomlay network's addresses
 	private Hashtable<Integer, File> fileList;
-	private  static TreeMap<Integer, Node> ring = new TreeMap<>();
 	private File file;
 	private boolean online, stab;
 	private int k;
@@ -55,14 +54,6 @@ public class Node implements Runnable, Serializable{
 		ch = new ClientHandler(this);
 	}
 
-	public Node() throws IOException, ClassNotFoundException {
-		id = new Random().nextInt(10 + 1);
-		succ = null;
-		online = true;
-	}
-
-
-	@SuppressWarnings("unchecked")
 	private void joinServer() throws UnknownHostException, IOException, ClassNotFoundException {
 		ch = new ClientHandler(this);
 		ch.joinServer();
@@ -74,10 +65,6 @@ public class Node implements Runnable, Serializable{
 
 	public int getPort() {
 		return port;
-	}
-
-	public TreeMap<Integer, Node> getRing() {
-		return ring;
 	}
 
 	/**
@@ -92,11 +79,6 @@ public class Node implements Runnable, Serializable{
 			Forwarder f = new Forwarder();
 			Request req = new Request(this.getPort(), Request.start_stabilize);
 			f.send(req);
-			if(!ring.containsValue(this)) {
-				synchronized (this) {
-					ring.put(this.getId(), this);
-				}
-			}
 			System.out.println("Node[" + this.getId() + "]: Ring created.");
 			System.out.println(this.toString());
 		}
@@ -128,10 +110,6 @@ public class Node implements Runnable, Serializable{
 		ch.addFile(node, file, k);
 	}
 
-	public void addToRing(Node n) {
-		ring.put(n.getId(), n);
-	}
-
 	/* (non-Javadoc)
 	 * @see java.lang.Runnable#run()
 	 */
@@ -143,7 +121,7 @@ public class Node implements Runnable, Serializable{
 			Executor executor = Executors.newFixedThreadPool(1000);
 			while(online) {
 				Socket client = server.accept();
-				executor.execute(new ServerHandler(client, this, m, ring));
+				executor.execute(new ServerHandler(client, this, m));
 			}
 			server.close();
 		} catch (IOException e) {
@@ -224,7 +202,7 @@ public class Node implements Runnable, Serializable{
 		scanner.close();
 	}
 
-	private void joinRing(int port) {
+	public void joinRing(int port) {
 		if(port > 10100 && port < 10000)
 			port = -1;
 		ch = new ClientHandler(this);
