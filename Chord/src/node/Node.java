@@ -34,6 +34,7 @@ public class Node implements Runnable, Serializable{
 	private final static int m = 8;		//keys/ID space
 	private int id;
 	private int port;
+	private ClientHandler ch;
 	private HashSet<InetSocketAddress> set;		//Bottomlay network's addresses
 	private Hashtable<Integer, File> fileList;
 	private  static TreeMap<Integer, Node> ring = new TreeMap<>();
@@ -50,6 +51,7 @@ public class Node implements Runnable, Serializable{
 		fileList = new Hashtable<>();
 		online = true;
 		stab = false;
+		ch = new ClientHandler(this);
 	}
 
 	public Node() throws IOException, ClassNotFoundException {
@@ -61,36 +63,16 @@ public class Node implements Runnable, Serializable{
 
 	@SuppressWarnings("unchecked")
 	private void joinServer() throws UnknownHostException, IOException, ClassNotFoundException {
-		Socket client = null;
-		ObjectOutputStream out = null;
-		ObjectInputStream in = null;
-
-		client = new Socket("localhost", 1099);	//contact joinserver
-		out = new ObjectOutputStream(client.getOutputStream());
-		in = new ObjectInputStream(client.getInputStream());
-
-		out.writeObject(new InetSocketAddress(port));
-		set = (HashSet<InetSocketAddress>) in.readObject();
-		client.close();
-		System.out.println("Node[" + port + "] - Network: " + set.toString());
+		ch = new ClientHandler(this);
+		ch.joinServer();
 	}
 
-
+	public void setSet(HashSet<InetSocketAddress> set) {
+		this.set = set;
+	}
 
 	public int getPort() {
 		return port;
-	}
-
-	/**
-	 * @param node 
-	 * @throws IOException
-	 * @throws ClassNotFoundException
-	 */
-	@SuppressWarnings({ "javadoc" })
-	public void join() throws IOException {
-		Forwarder f = new Forwarder();
-		Request request = new Request(ring.get(ring.firstKey()).getPort(), Request.join_request, this);
-		f.send(request);
 	}
 
 	public TreeMap<Integer, Node> getRing() {
@@ -125,26 +107,23 @@ public class Node implements Runnable, Serializable{
 		return fileList;
 	}
 
-	public void saveFile() throws IOException {
+	public void addFile() throws IOException {
 		file = new RandomFile().getFile();
 		int k = Hashing.consistentHash(file.hashCode(), m);
-		Node n = findSuccessor(k);
-		Forwarder f = new Forwarder();
-		Request request = new Request(n.getPort(), Request.save_file, file);
-		try {
-			f.send(request, this);
-		} catch (IOException e) {
-			e.printStackTrace();
+
+		if(k == this.getId())
+			fileList.put(k, file);
+		else {
+			ch = new ClientHandler(this);
+			ch.addFileReq(k);
 		}
 	}
 
-	public Node findSuccessor(int k) {
-		TreeMap<Integer, Node> aux = new TreeMap<>();
-		for(int id : ring.keySet())
-			aux.put((id - k + m)%m, ring.get(id));
-		return aux.get(aux.firstKey());
+	public void saveFile(Node node) {
+		ch = new ClientHandler(this);
+		ch.addFile(node, file);
 	}
-	
+
 	public void addToRing(Node n) {
 		ring.put(n.getId(), n);
 	}
@@ -205,10 +184,10 @@ public class Node implements Runnable, Serializable{
 
 		int choice = 0;
 		Scanner scanner = new Scanner(System.in);
-		
+
 		System.out.println("Enter node port (range 10000-10100): ");
 		Node n = new Node(scanner.nextInt());
-		new Thread(n).start();
+		new Thread(n, "Node[" + n.getId() + "]").start();
 		while(choice != 4) {
 			System.out.println("Choose operation");
 			System.out.println("-------------------------\n");
@@ -224,10 +203,12 @@ public class Node implements Runnable, Serializable{
 				n.create();
 				break;
 			case 2:
-				n.join();
+				System.out.println("Enter join Node port: ");
+				int port = scanner.nextInt();
+				n.joinRing(port);
 				break;
 			case 3:
-				n.saveFile();
+				n.addFile();
 				break;
 			case 4:
 				n.setOffline();
@@ -237,6 +218,13 @@ public class Node implements Runnable, Serializable{
 			}
 		}
 		scanner.close();
+	}
+
+	private void joinRing(int port) {
+		if(port > 10100 && port < 10000)
+			port = -1;
+		ch = new ClientHandler(this);
+		ch.joinRequest(port);
 	}
 
 	public void setId(int id) {
