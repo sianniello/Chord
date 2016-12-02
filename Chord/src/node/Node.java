@@ -12,12 +12,14 @@ import java.net.UnknownHostException;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Random;
+import java.util.Scanner;
 import java.util.TreeMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 import com.google.common.hash.Hashing;
 import randomFile.RandomFile;
+import sun.font.CreatedFontTracker;
 
 /**
  * This is the main class, its include client role
@@ -42,7 +44,7 @@ public class Node implements Runnable, Serializable{
 	private Hashtable<Integer, File> fileList;
 	private  static TreeMap<Integer, Node> ring = new TreeMap<>();
 	private File file;
-	private boolean online;
+	private boolean online, stab;
 
 	@SuppressWarnings({ "javadoc", "unqualified-field-access" })
 	public Node(int port) throws IOException, ClassNotFoundException {
@@ -53,6 +55,7 @@ public class Node implements Runnable, Serializable{
 		succ = null;
 		fileList = new Hashtable<>();
 		online = true;
+		stab = false;
 	}
 
 	public Node() throws IOException, ClassNotFoundException {
@@ -78,36 +81,7 @@ public class Node implements Runnable, Serializable{
 		System.out.println("Node[" + port + "] - Network: " + set.toString());
 	}
 
-	public void check_predecessor(Node node) {
-		new Thread(new Runnable() {
 
-			@Override
-			public void run() {
-				Socket client;
-				while(true)
-					try {
-						client = new Socket("localhost", node.getPred().getPort());
-						if(client.isConnected()) {
-							ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
-							out.writeObject(new Request(node.getPred().getPort()));
-							client.close();
-						}
-						else {
-							//keys and file ridistribution
-							node.getFileList().putAll(node.getPred().getFileList());
-							node.setPred(null);
-							synchronized (this) {
-								node.getRing().remove(node.getPred().getId());
-							}
-						}
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
-
-
-			}
-		}).start();
-	}
 
 	public int getPort() {
 		return port;
@@ -171,13 +145,13 @@ public class Node implements Runnable, Serializable{
 		}
 	}
 
-	Node findSuccessor(int k) {
+	public Node findSuccessor(int k) {
 		TreeMap<Integer, Node> aux = new TreeMap<>();
 		for(int id : ring.keySet())
 			aux.put((id - k + m)%m, ring.get(id));
 		return aux.get(aux.firstKey());
 	}
-
+	
 	public void addToRing(Node n) {
 		ring.put(n.getId(), n);
 	}
@@ -185,20 +159,19 @@ public class Node implements Runnable, Serializable{
 	/* (non-Javadoc)
 	 * @see java.lang.Runnable#run()
 	 */
-	@SuppressWarnings("resource")
 	@Override
 	public void run() {
 		try {
-			ServerSocket server;
-			server = new ServerSocket(port);
+			ServerSocket server = new ServerSocket(port);
 
 			Executor executor = Executors.newFixedThreadPool(1000);
 			while(online) {
 				Socket client = server.accept();
 				executor.execute(new ServerHandler(client, this, m, ring));
 			}
+			server.close();
 		} catch (IOException e) {
-			System.err.println("Connection lost! " + this.toString());
+			System.err.println("Connection lost! " + this.toString() + " " + e.getClass().toString());
 			e.printStackTrace();
 		}
 	}
@@ -237,6 +210,40 @@ public class Node implements Runnable, Serializable{
 
 	public static void main(String[] args) throws ClassNotFoundException, IOException {
 
+		int choice = 0;
+		Scanner scanner = new Scanner(System.in);
+		
+		System.out.println("Enter node port (range 10000-10100): ");
+		Node n = new Node(scanner.nextInt());
+		new Thread(n).start();
+		while(choice != 4) {
+			System.out.println("Choose operation");
+			System.out.println("-------------------------\n");
+			System.out.println("1 - Create ring");
+			System.out.println("2 - Join Ring");
+			System.out.println("3 - Add a file");
+			System.out.println("4 - Go offline");
+
+			choice = scanner.nextInt();
+
+			switch (choice) {
+			case 1:
+				n.create();
+				break;
+			case 2:
+				n.join();
+				break;
+			case 3:
+				n.saveFile();
+				break;
+			case 4:
+				n.setOffline();
+				break;
+			default:
+				// The user input an unexpected choice.
+			}
+		}
+		scanner.close();
 	}
 
 	public void setId(int id) {
@@ -256,8 +263,18 @@ public class Node implements Runnable, Serializable{
 		return online;
 	}
 
-	public void setOnline(boolean online) {
-		this.online = online;
+	public void setOffline() {
+		System.out.println(this.toString() + " goes offline...");
+		this.online = false;
+		this.stab = false;
+	}
+
+	public void setStabilization(boolean stab) {
+		this.stab = stab;
+	}
+
+	public boolean getStabilization() {
+		return stab;
 	}
 
 }

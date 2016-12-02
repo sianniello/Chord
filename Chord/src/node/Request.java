@@ -14,15 +14,17 @@ public class Request implements Serializable{
 	public static final int join = 2;
 	public static final int stabilize = 3;
 	public static final int notify = 4;
-	public static final int check = 5;
-	public static final int find_successor_ = 6;
+	public static final int check_alive = 5;
+	public static final int find_successor = 6;
 	public static final int join_request = 7;
 	public static final int stabilize_request = 8;
 	public static final int start_stabilize = 9;
+	public static final int alive = 10;
+	public static final int dead = 11;
 	
-	private int port;
-	private int request;
-	private Node node;
+	private int port;	//destination port
+	private int request;	//request type
+	private Node node;	//source node
 	private File file;
 	private int k;
 
@@ -31,7 +33,7 @@ public class Request implements Serializable{
 	}
 	
 	public Request(int port, int request) {
-		this(port);
+		this.port = port;
 		this.request = request;
 	}
 	

@@ -3,6 +3,7 @@ package node;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Random;
 import java.util.TreeMap;
@@ -11,12 +12,12 @@ class ServerHandler implements Runnable {
 
 	private ObjectOutputStream out = null;
 	private ObjectInputStream in = null;
-	private Node n;
+	private static Node n;
 	public int m;
 	private TreeMap<Integer, Node> ring;
+	private Request req;
 
 	public ServerHandler(Socket client, Node n, int m, TreeMap<Integer, Node> ring) throws IOException {
-		out = new ObjectOutputStream(client.getOutputStream());
 		in = new ObjectInputStream(client.getInputStream());
 		this.n = n;
 		this.m = m;
@@ -55,16 +56,26 @@ class ServerHandler implements Runnable {
 
 				//joined node update his succ and start stabilization routine
 			case Request.join:
-				n.setSucc(request.getNode());
-				n.setPred(null);
-				System.out.println(n.toString() + ": join ring");
+				if(request.getNode() == null)
+					System.err.println("Join Failed!");
+				if(request.getNode().getId() == n.getId())
+					System.err.println("Join Failed! ID already running on ring.");
+				else {
+					n.setSucc(request.getNode());
+					n.setPred(null);
+					System.out.println(n.toString() + ": join ring");
+					stabilize(n);
+				}
+				break;
+
+			case Request.start_stabilize:
 				stabilize(n);
 				break;
 
 				//node send stabilization request to his successor and it reply with his predecessor
 			case Request.stabilize_request:
 				Forwarder f = new Forwarder();
-				Request req = new Request(request.getNode().getPort(), Request.stabilize, n.getPred());
+				req = new Request(request.getNode().getPort(), Request.stabilize, n.getPred());
 				f.send(req);
 				break;
 
@@ -91,8 +102,7 @@ class ServerHandler implements Runnable {
 				}
 				break;
 
-			case Request.start_stabilize:
-				stabilize(n);
+			case Request.check_alive:
 				break;
 
 			default:
@@ -104,10 +114,22 @@ class ServerHandler implements Runnable {
 		} 
 	}
 
-	private void notifySuccessor() throws IOException {
-		Forwarder f = new Forwarder();
-		Request req = new Request(n.getSucc().getPort(), Request.notify, n);
-		f.send(req);
+	private void notifySuccessor() {
+		if(n.isOnline()) {
+			Forwarder f = new Forwarder();
+			Request req = new Request(n.getSucc().getPort(), Request.notify, n);
+			try {
+				f.send(req);
+			} catch (IOException e) {
+				System.err.println(n.getSucc().toString() + " HAS FAILED.");
+				if(n.getRing().containsKey(n.getSucc().getId()))
+				synchronized (this) {
+					n.getRing().remove(n.getSucc().getId());
+				}
+				n.setSucc(n.findSuccessor(n.getId()));
+				System.out.println(n.toString() + ": new successor is " + n.getSucc().toString());
+			}
+		}
 	}
 
 	Node findSuccessor(int k) {
@@ -125,21 +147,58 @@ class ServerHandler implements Runnable {
 	 * @param node
 	 */
 	public void stabilize(Node node) {
-		new Thread(new Runnable() {
-			public void run() {
-				while(true) {
-					try {
+		if(!n.getStabilization() && n.isOnline())
+			new Thread(new Runnable() {
+				public void run() {
+					node.setStabilization(true);
+					while(node.getStabilization() && node.isOnline()) {
 						Forwarder f = new Forwarder();
-						Request req = new Request(node.getSucc().getPort(), Request.stabilize_request, node);
-						f.send(req);
+						req = new Request(node.getSucc().getPort(), Request.stabilize_request, node);
+						try {
+							f.send(req);
+						} catch (IOException e1) {
+							System.err.println(node.getSucc().toString() + " HAS FAILED.");
+							if(n.getRing().containsKey(n.getSucc().getId()))
+							synchronized (this) {
+								n.getRing().remove(n.getSucc().getId());
+							}
+							n.setSucc(n.findSuccessor(n.getId()));
+							System.out.println(node.toString() + ": new successor is " + node.getSucc().toString());
+						}
+
+						if(node.getPred() != null)
+							check_predecessor(node);
+
 						System.out.println(node.toString() + ": stabilization routine...");
-						Thread.sleep(new Random().nextInt(5000) + 2000);
-					} catch (InterruptedException | IOException e) {
-						e.printStackTrace();
+						try {
+							Thread.sleep(new Random().nextInt(5000) + 2000);
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+						}
 					}
 				}
-			}
-		}).start();
+			}, node.toString() + ": stabilizator").start();
+	}
+
+	public void check_predecessor(Node node) {
+		if(n.isOnline())
+			(new Runnable() {
+				@Override
+				public void run() {
+					Request req = new Request(n.getPred().getPort(), Request.check_alive, n);
+					Forwarder f = new Forwarder();
+					if(!f.sendCheck(req)) {
+						System.err.println(n.getPred().toString() + " HAS FAILED.");
+						if(n.getRing().containsKey(n.getPred().getId()))
+						synchronized (this) {
+							n.getRing().remove(n.getPred().getId());
+						}
+						n.getFileList().putAll(n.getPred().getFileList());
+						System.err.println(n.toString() + " file list recovered.");
+						n.setPred(null);
+					}
+				}
+			}).run();
 	}
 
 	boolean successor(int s, int n, int x) {
