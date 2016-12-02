@@ -19,21 +19,21 @@ public class Init {
 		}
 		Scanner s = new Scanner(System.in);
 		nodes[0].create();		//node[0] create a Chord ring
-		nodes[0].saveFile();
+		nodes[0].addFile();
 		s.nextLine();
-		nodes[2].join();
+		nodes[2].joinRing(nodes[0].getPort());
 		s.nextLine();
 		nodes[0].setOffline();
 		s.nextLine();
-		nodes[2].saveFile();
+		nodes[2].addFile();
 		s.nextLine();
-		nodes[3].join();
+		nodes[3].joinRing(nodes[0].getPort());
 		s.nextLine();
-		nodes[4].join();
+		nodes[4].joinRing(nodes[0].getPort());
 		s.nextLine();
-		nodes[1].join();
+		nodes[1].joinRing(nodes[0].getPort());
 		s.nextLine();
-		nodes[5].join();
+		nodes[5].joinRing(nodes[0].getPort());
 		
 		
 		s.close();
