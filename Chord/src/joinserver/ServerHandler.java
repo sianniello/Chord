@@ -10,18 +10,15 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 class ServerHandler implements Runnable {
-	private Socket client;
 	private HashSet<InetSocketAddress> set;
 	private ObjectOutputStream out;
 	private ObjectInputStream in;
 
 
 	public ServerHandler(Socket client, HashSet<InetSocketAddress> set) throws IOException {
-		this.client = client;
 		this.set = set;
 		out = new ObjectOutputStream(client.getOutputStream());
 		in = new ObjectInputStream(client.getInputStream());
-
 	}
 
 	@Override
