@@ -122,7 +122,6 @@ public class Node implements Runnable, Serializable{
 			}
 			System.out.println("Node[" + this.getId() + "]: Ring created.");
 			System.out.println(this.toString());
-			//stabilize(this);
 		}
 		else
 			System.out.println("Ring already created.");

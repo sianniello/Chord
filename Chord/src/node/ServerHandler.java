@@ -123,9 +123,9 @@ class ServerHandler implements Runnable {
 			} catch (IOException e) {
 				System.err.println(n.getSucc().toString() + " HAS FAILED.");
 				if(n.getRing().containsKey(n.getSucc().getId()))
-				synchronized (this) {
-					n.getRing().remove(n.getSucc().getId());
-				}
+					synchronized (this) {
+						n.getRing().remove(n.getSucc().getId());
+					}
 				n.setSucc(n.findSuccessor(n.getId()));
 				System.out.println(n.toString() + ": new successor is " + n.getSucc().toString());
 			}
@@ -159,9 +159,9 @@ class ServerHandler implements Runnable {
 						} catch (IOException e1) {
 							System.err.println(node.getSucc().toString() + " HAS FAILED.");
 							if(n.getRing().containsKey(n.getSucc().getId()))
-							synchronized (this) {
-								n.getRing().remove(n.getSucc().getId());
-							}
+								synchronized (this) {
+									n.getRing().remove(n.getSucc().getId());
+								}
 							n.setSucc(n.findSuccessor(n.getId()));
 							System.out.println(node.toString() + ": new successor is " + node.getSucc().toString());
 						}
@@ -185,17 +185,19 @@ class ServerHandler implements Runnable {
 			(new Runnable() {
 				@Override
 				public void run() {
-					Request req = new Request(n.getPred().getPort(), Request.check_alive, n);
-					Forwarder f = new Forwarder();
-					if(!f.sendCheck(req)) {
-						System.err.println(n.getPred().toString() + " HAS FAILED.");
-						if(n.getRing().containsKey(n.getPred().getId()))
-						synchronized (this) {
-							n.getRing().remove(n.getPred().getId());
+					if(n.getPred() != null) {
+						Request req = new Request(n.getPred().getPort(), Request.check_alive, n);
+						Forwarder f = new Forwarder();
+						if(!f.sendCheck(req)) {
+							System.err.println(n.getPred().toString() + " HAS FAILED.");
+							if(n.getRing().containsKey(n.getPred().getId()))
+								synchronized (this) {
+									n.getRing().remove(n.getPred().getId());
+								}
+							n.getFileList().putAll(n.getPred().getFileList());
+							System.err.println(n.toString() + " file list recovered.");
+							n.setPred(null);
 						}
-						n.getFileList().putAll(n.getPred().getFileList());
-						System.err.println(n.toString() + " file list recovered.");
-						n.setPred(null);
 					}
 				}
 			}).run();

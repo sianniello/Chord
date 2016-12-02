@@ -14,16 +14,13 @@ import java.util.logging.Logger;
 
 public class JoinServer {
     
-    private int port;
     private ServerSocket server;
     private HashSet<InetSocketAddress> set;
 
     public JoinServer(int port) throws IOException {
-        this.port = port;
         server = new ServerSocket(port);
         set = new HashSet<>();
-        for(int i = 0; i <= 10; i++)
-        	set.add(new InetSocketAddress(10000 + i));
+        
         System.out.println("Server listening at: " + port);
     }
     
