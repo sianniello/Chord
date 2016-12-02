@@ -12,7 +12,7 @@ public class Init {
 		for(int i = 0; i < Integer.parseInt(args[0]); i++) {
 			try {
 				nodes[i] = new Node(10000 + i);
-				new Thread(nodes[i]).start();
+				new Thread(nodes[i], "Node[" + (10000 + i) + "]").start();
 			} catch (ClassNotFoundException | IOException e) {
 				e.printStackTrace();
 			}
@@ -23,9 +23,19 @@ public class Init {
 		s.nextLine();
 		nodes[2].join();
 		s.nextLine();
+		nodes[0].setOffline();
+		s.nextLine();
 		nodes[2].saveFile();
 		s.nextLine();
 		nodes[3].join();
+		s.nextLine();
+		nodes[4].join();
+		s.nextLine();
+		nodes[1].join();
+		s.nextLine();
+		nodes[5].join();
+		
+		
 		s.close();
 	}
 }

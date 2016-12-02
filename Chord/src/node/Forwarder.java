@@ -2,6 +2,7 @@ package node;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.HashSet;
 
@@ -12,6 +13,7 @@ public class Forwarder {
 
 	private HashSet<Node> ring;
 	private ObjectOutputStream out;
+	private Socket client;
 
 	@SuppressWarnings("javadoc")
 	public Forwarder() {
@@ -28,28 +30,16 @@ public class Forwarder {
 	 *
 	 * @param message
 	 * @param port
+	 * @throws UnknownHostException 
 	 * @throws IOException
 	 */
 	@SuppressWarnings({ "unqualified-field-access" })
-	public void send(Request request) throws IOException {
-
-		//Fail management in stabilize routine
-		if (request.getRequest() == Request.stabilize) {
-			Socket client = new Socket("localhost", request.getPort());
-			if(!client.isConnected()) {
-				client.close();
-				client = new Socket("localhost", request.getNode().getSucc().getPort());
-			}
-			out = new ObjectOutputStream(client.getOutputStream());
-			out.writeObject(request);
-			client.close();
-		}
-		else {
-			Socket client = new Socket("localhost", request.getPort());
-			out = new ObjectOutputStream(client.getOutputStream());
-			out.writeObject(request);
-			client.close();
-		}
+	public void send(Request request) throws UnknownHostException, IOException {
+		client = new Socket("localhost", request.getPort());
+		client.setSoTimeout(1000);
+		out = new ObjectOutputStream(client.getOutputStream());
+		out.writeObject(request);
+		client.close();
 	}
 
 	/**
@@ -59,20 +49,38 @@ public class Forwarder {
 	 * @throws IOException
 	 */
 	@SuppressWarnings("unqualified-field-access")
-	public void sendAll(Request request) throws IOException {
+	public void sendAll(Request request) {
 		for(Node i : ring) {
-			Socket client = new Socket("localhost", i.getId());
-			out = new ObjectOutputStream(client.getOutputStream());
-			out.writeObject(request);
-			client.close();
+			try {
+				client = new Socket("localhost", i.getId());
+				out = new ObjectOutputStream(client.getOutputStream());
+				out.writeObject(request);
+				client.close();
+			} catch (IOException e) {
+				System.err.println(request.getNode().toString());
+				e.printStackTrace();
+			}
 		}
 	}
 
 	public void send(Request request, Node node) throws UnknownHostException, IOException {
-		Socket client = new Socket("localhost", node.getPort());
+		client = new Socket("localhost", node.getPort());
 		out = new ObjectOutputStream(client.getOutputStream());
 		out.writeObject(request);
 		client.close();
+	}
+
+	public boolean sendCheck(Request request) {
+		try {
+			client = new Socket("localhost", request.getPort());
+			client.setSoTimeout(1000);
+			out = new ObjectOutputStream(client.getOutputStream());
+			out.writeObject(request);
+			client.close();
+		} catch (IOException e) {
+			return false;
+		}
+		return true;
 	}
 
 }
