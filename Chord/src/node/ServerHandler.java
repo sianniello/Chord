@@ -8,6 +8,8 @@ import java.net.Socket;
 import java.util.Random;
 import java.util.TreeMap;
 
+import com.google.common.hash.Hashing;
+
 class ServerHandler implements Runnable {
 
 	private ObjectOutputStream out = null;
@@ -38,24 +40,35 @@ class ServerHandler implements Runnable {
 			Request request = (Request) in.readObject();
 
 			switch(request.getRequest()) {
-			case Request.save_file:
-				n.getFileList().put(n.getId(), request.getFile());
-				System.out.println(n.toString() + ": save file " + request.getFile().getName());
-				break;
 
+			case Request.addFile_REQ:
+				System.out.println(n.toString() + ": received an add file request from Node[" + request.getNode().getId() + "]");
+				if(request.getNode().getId() == n.getSucc().getId() || successor(n.getSucc().getId(), n.getId(), request.getNode().getId()))
+					new Forwarder().send(new Request(request.getNode().getPort(), Request.addFile_RES, n.getSucc()));
+				else
+					new Forwarder().send(new Request(n.getSucc().getPort(), Request.addFile_REQ, request.getNode()));
+				break;
+				
+			case Request.addFile_RES:
+				n.saveFile(request.getNode());
+				break;
+				
+			case Request.addFile:
+				int key = Hashing.consistentHash(request.getFile().hashCode(), m);
+				n.getFileList().put(key, request.getFile());
+				break;
+				
 				//a new node request join to a ring's node. It send back successor of new node
-			case Request.join_request:
-				System.out.println(n.toString() + ": received a join request from Node[" + request.getNode().getId() + "]");
-				Node succ = findSuccessor(request.getNode().getId());
-				if(!n.getRing().containsKey(request.getNode().getId()))
-					synchronized (this) {
-						n.getRing().put(request.getNode().getId(), request.getNode());
-					}
-				new Forwarder().send(new Request(request.getNode().getPort(), Request.join, succ));
+			case Request.join_REQ:
+				System.out.println(n.toString() + ": received a join request from Node[" + request.getNode().getPort() + "]");
+				if(request.getNode().getId() == n.getSucc().getId() || successor(n.getSucc().getId(), n.getId(), request.getNode().getId()))
+					new Forwarder().send(new Request(request.getNode().getPort(), Request.join_RES, n.getSucc()));
+				else
+					new Forwarder().send(new Request(n.getSucc().getPort(), Request.join_REQ, request.getNode()));
 				break;
 
 				//joined node update his succ and start stabilization routine
-			case Request.join:
+			case Request.join_RES:
 				if(request.getNode() == null)
 					System.err.println("Join Failed!");
 				if(request.getNode().getId() == n.getId())
@@ -103,6 +116,7 @@ class ServerHandler implements Runnable {
 				break;
 
 			case Request.check_alive:
+				//dummy request
 				break;
 
 			default:
@@ -122,11 +136,7 @@ class ServerHandler implements Runnable {
 				f.send(req);
 			} catch (IOException e) {
 				System.err.println(n.getSucc().toString() + " HAS FAILED.");
-				if(n.getRing().containsKey(n.getSucc().getId()))
-					synchronized (this) {
-						n.getRing().remove(n.getSucc().getId());
-					}
-				n.setSucc(n.findSuccessor(n.getId()));
+				//TODO recover routine
 				System.out.println(n.toString() + ": new successor is " + n.getSucc().toString());
 			}
 		}
@@ -158,11 +168,7 @@ class ServerHandler implements Runnable {
 							f.send(req);
 						} catch (IOException e1) {
 							System.err.println(node.getSucc().toString() + " HAS FAILED.");
-							if(n.getRing().containsKey(n.getSucc().getId()))
-								synchronized (this) {
-									n.getRing().remove(n.getSucc().getId());
-								}
-							n.setSucc(n.findSuccessor(n.getId()));
+							//TODO recover routine
 							System.out.println(node.toString() + ": new successor is " + node.getSucc().toString());
 						}
 
@@ -205,7 +211,7 @@ class ServerHandler implements Runnable {
 
 	boolean successor(int s, int n, int x) {
 		if(x == n || x == s) return false;
-		if((s - n + m)%m > (x - n + m)%m)
+		if((s - n + m)%m > (x - n + m)%m || n == s)
 			return true;
 		else return false;
 	}

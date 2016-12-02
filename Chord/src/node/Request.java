@@ -9,18 +9,17 @@ import randomFile.RandomFile;
 @SuppressWarnings("serial")
 public class Request implements Serializable{
 	
-	public static final int save_file = 0;
-	public static final int add_file = 1;
-	public static final int join = 2;
-	public static final int stabilize = 3;
-	public static final int notify = 4;
-	public static final int check_alive = 5;
-	public static final int find_successor = 6;
-	public static final int join_request = 7;
-	public static final int stabilize_request = 8;
-	public static final int start_stabilize = 9;
-	public static final int alive = 10;
-	public static final int dead = 11;
+	public static final int addFile_REQ = 1;
+	public static final int addFile_RES = 2;
+	public static final int addFile = 3;
+	public static final int join_REQ = 4;
+	public static final int join_RES = 5;
+	public static final int start_stabilize = 6;
+	public static final int stabilize_request = 7;
+	public static final int stabilize = 8;
+	public static final int notify = 9;
+	public static final int check_alive = 0;
+	
 	
 	private int port;	//destination port
 	private int request;	//request type
