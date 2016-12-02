@@ -42,8 +42,10 @@ class ServerHandler implements Runnable {
 			switch(request.getRequest()) {
 
 			case Request.addFile_REQ:
-				System.out.println(n.toString() + ": received an add file request from Node[" + request.getNode().getId() + "]");
-				if(request.getNode().getId() == n.getSucc().getId() || successor(n.getSucc().getId(), n.getId(), request.getNode().getId()))
+				int k = request.getK();
+				if(k == n.getId())
+					new Forwarder().send(new Request(request.getNode().getPort(), Request.addFile_RES, n));
+				else if(k == n.getSucc().getId() || successor(n.getSucc().getId(), n.getId(), k))
 					new Forwarder().send(new Request(request.getNode().getPort(), Request.addFile_RES, n.getSucc()));
 				else
 					new Forwarder().send(new Request(n.getSucc().getPort(), Request.addFile_REQ, request.getNode()));
@@ -54,8 +56,10 @@ class ServerHandler implements Runnable {
 				break;
 				
 			case Request.addFile:
-				int key = Hashing.consistentHash(request.getFile().hashCode(), m);
+				int key = request.getK();
 				n.getFileList().put(key, request.getFile());
+				System.out.println(n.toString() + ": save file " + request.getFile().getName() + " with key " + key);
+				System.out.println(n.toString() + ": Filelist " + n.getFileList().toString());
 				break;
 				
 				//a new node request join to a ring's node. It send back successor of new node

@@ -40,6 +40,7 @@ public class Node implements Runnable, Serializable{
 	private  static TreeMap<Integer, Node> ring = new TreeMap<>();
 	private File file;
 	private boolean online, stab;
+	private int k;
 
 	@SuppressWarnings({ "javadoc", "unqualified-field-access" })
 	public Node(int port) throws IOException, ClassNotFoundException {
@@ -109,10 +110,13 @@ public class Node implements Runnable, Serializable{
 
 	public void addFile() throws IOException {
 		file = new RandomFile().getFile();
-		int k = Hashing.consistentHash(file.hashCode(), m);
+		k = Hashing.consistentHash(file.hashCode(), m);
 
-		if(k == this.getId())
+		if(k == this.getId()) {
 			fileList.put(k, file);
+			System.out.println(this.toString() + ": save file " + file.getName() + " with key " + k);
+			System.out.println(this.toString() + ": Filelist " + this.getFileList().toString());
+		}
 		else {
 			ch = new ClientHandler(this);
 			ch.addFileReq(k);
@@ -121,7 +125,7 @@ public class Node implements Runnable, Serializable{
 
 	public void saveFile(Node node) {
 		ch = new ClientHandler(this);
-		ch.addFile(node, file);
+		ch.addFile(node, file, k);
 	}
 
 	public void addToRing(Node n) {
