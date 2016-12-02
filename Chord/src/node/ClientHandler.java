@@ -18,26 +18,34 @@ public class ClientHandler {
 	}
 
 	@SuppressWarnings("unchecked")
-	public void joinServer() throws IOException {
+	public void joinServer() throws IOException, ClassNotFoundException {
 		Socket client = null;
 		ObjectOutputStream out = null;
 		ObjectInputStream in = null;
 
-		try {
-			client = new Socket("localhost", 1099);
+		client = new Socket("localhost", 1099);	//contact joinserver
+		out = new ObjectOutputStream(client.getOutputStream());
+		in = new ObjectInputStream(client.getInputStream());
 
-			out = new ObjectOutputStream(client.getOutputStream());
-			in = new ObjectInputStream(client.getInputStream());
-
-			out.writeObject(new InetSocketAddress(port));
-
-			synchronized (this) {
-				set = (HashSet<InetSocketAddress>) in.readObject();
-			}
-			System.out.println(set);
-		} catch (IOException | ClassNotFoundException e) {
-			e.printStackTrace();
-		}	
+		out.writeObject(new InetSocketAddress(port));
+		set = (HashSet<InetSocketAddress>) in.readObject();
+		client.close();
 		System.out.println("Node[" + port + "] - Network: " + set.toString());
+	}
+
+	public void joinNode() {
+		Socket client = null;
+		ObjectOutputStream out = null;
+		ObjectInputStream in = null;
+
+		for(InetSocketAddress isa : set) {
+			try {
+				Forwarder f = new Forwarder();
+				Request request = new Request(isa.getPort(), Request.join_request);
+				f.send(request);
+			} catch (IOException e) {
+				
+			}	
+		}
 	}
 }
