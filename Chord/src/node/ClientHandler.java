@@ -63,7 +63,7 @@ public class ClientHandler implements Serializable{
 
 	public void addFileReq(int k) {
 		Forwarder f = new Forwarder();
-		Request request = new Request(node.getSucc().getPort(), Request.addFile_REQ);
+		Request request = new Request(node.getSucc().getPort(), Request.addFile_REQ, k, node);
 		try {
 			f.send(request);
 		} catch (IOException e) {
@@ -71,9 +71,9 @@ public class ClientHandler implements Serializable{
 		}
 	}
 
-	public void addFile(Node node, File file) {
+	public void addFile(Node node, File file, int k) {
 		Forwarder f = new Forwarder();
-		Request req = new Request(node.getPort(), Request.addFile, file);
+		Request req = new Request(node.getPort(), Request.addFile, k, file);
 		try {
 			f.send(req);
 		} catch (IOException e) {

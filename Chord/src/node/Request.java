@@ -8,7 +8,7 @@ import randomFile.RandomFile;
 
 @SuppressWarnings("serial")
 public class Request implements Serializable{
-	
+
 	public static final int addFile_REQ = 1;
 	public static final int addFile_RES = 2;
 	public static final int addFile = 3;
@@ -19,8 +19,8 @@ public class Request implements Serializable{
 	public static final int stabilize = 8;
 	public static final int notify = 9;
 	public static final int check_alive = 0;
-	
-	
+
+
 	private int port;	//destination port
 	private int request;	//request type
 	private Node node;	//source node
@@ -30,22 +30,32 @@ public class Request implements Serializable{
 	public Request(int port) {
 		this.port = port;
 	}
-	
+
 	public Request(int port, int request) {
 		this.port = port;
 		this.request = request;
 	}
-	
+
 	public Request(int port, int request, File file) {
 		this(port, request);
 		this.file = file;
 	}
-	
+
 	public Request(int port, int request, Node node) {
 		this(port, request);
 		this.node = node;
 	}
-	
+
+	public Request(int port, int request, int k, Node node) {
+		this(port, request, node);
+		this.k = k;
+	}
+
+	public Request(int port, int request, int k, File file) {
+		this(port, request, file);
+		this.k = k;
+	}
+
 	public int getPort() {
 		return port;
 	}
@@ -68,15 +78,6 @@ public class Request implements Serializable{
 
 	public void setFile(File file) {
 		this.file = file;
-	}
-
-	@Override
-	public String toString() {
-		if(file != null)
-			return "Filename: " + file.getName() + ", requestId =" + request;
-		if(node != null)
-			return node.toString() + ", requestId = "; 
-		else return "Dummy request";
 	}
 
 	public int getK() {
