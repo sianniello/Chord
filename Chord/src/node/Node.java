@@ -194,7 +194,7 @@ public class Node implements Runnable, Serializable{
 		this.file = f;
 	}
 
-	public static void main(String[] args) throws ClassNotFoundException, IOException {
+	public static void main(String[] args) throws IOException {
 
 		int choice = 0;
 		Scanner scanner = new Scanner(System.in);
@@ -203,10 +203,16 @@ public class Node implements Runnable, Serializable{
 		int node_port = scanner.nextInt();
 		System.out.println("Enter node port JoinServer address (address:p) or leave blank to default");
 		String input = scanner.next();
-		
+		scanner.close();
 		String addr[] = input.split(":");
 		
-		Node n = new Node(node_port, InetSocketAddress.createUnresolved(addr[0], Integer.parseInt(addr[1])));
+		Node n;
+		try {
+			n = new Node(node_port, InetSocketAddress.createUnresolved(addr[0], Integer.parseInt(addr[1])));
+		} catch (NumberFormatException | ClassNotFoundException e) {
+			System.err.println("Invalid address format");
+			return ;
+		}
 		
 		new Thread(n, "Node[" + n.getId() + "]").start();
 		while(choice != 4) {
