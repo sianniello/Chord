@@ -8,6 +8,7 @@ import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.HashSet;
 import java.util.Random;
 
@@ -15,6 +16,7 @@ import java.util.Random;
 public class ClientHandler implements Serializable{
 
 	private Node node;
+	private InetAddress joinServer;
 
 	public ClientHandler(Node node) {
 		this.node = node;
@@ -24,13 +26,24 @@ public class ClientHandler implements Serializable{
 	 * This function tries to connect to a Join Server to obtain nodes address of bottomlay network
 	 */
 	@SuppressWarnings("unchecked")
-	public void joinServer() {
+	public void joinServer(InetSocketAddress joinServer) {
 		Socket client = null;
 		ObjectOutputStream out = null;
 		ObjectInputStream in = null;
+		String join_server;
+		int join_server_port;
+		
+		if(joinServer == null) {
+			join_server = "localhost";
+			join_server_port = 1099;
+		}
+		else {
+			join_server = joinServer.getHostName();
+			join_server_port = joinServer.getPort();
+		}
 
 		try {
-			client = new Socket("localhost", 1099);
+			client = new Socket(join_server, join_server_port);
 			out = new ObjectOutputStream(client.getOutputStream());
 			in = new ObjectInputStream(client.getInputStream());
 
@@ -87,4 +100,5 @@ public class ClientHandler implements Serializable{
 			e.printStackTrace();
 		}
 	}
+	
 }

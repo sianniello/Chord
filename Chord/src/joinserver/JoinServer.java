@@ -7,6 +7,7 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashSet;
+import java.util.Scanner;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
@@ -41,11 +42,12 @@ public class JoinServer {
 
 	private void checkOnline() {
 		new Thread(new Runnable() {
+			@SuppressWarnings("unchecked")
 			@Override
 			public void run() {
 				while(true) {
-					synchronized (this) {
-						for(InetSocketAddress isa : set)
+					HashSet<InetSocketAddress> copy = (HashSet<InetSocketAddress>) set.clone();
+						for(InetSocketAddress isa : copy)
 							try {
 								Socket client = new Socket(isa.getHostName(), isa.getPort());
 								ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
@@ -60,13 +62,14 @@ public class JoinServer {
 							}
 					}
 				}
-			}
 		}).start();
 	}
 
 	public static void main(String[] args) throws IOException {
-
-		JoinServer jserver = new JoinServer(1099);
+		System.out.println("Enter Join Server port: ");
+		Scanner s = new Scanner(System.in);
+		JoinServer jserver = new JoinServer(s.nextInt());
+		s.close();
 
 		try {
 			jserver.execute();
