@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.HashSet;
@@ -42,29 +43,34 @@ public class ClientHandler implements Serializable{
 		System.out.println("Node[" + node.getPort() + "] - Network: " + node.getSet().toString());
 	}
 
-	public void joinRequest(int port) {
-		Forwarder f = new Forwarder();
-		if(port == -1) {
+	public void joinRequest(int n) {
+		InetSocketAddress address = null;
+		if(n > 0 && n < node.getSet().size()) 
+			address = node.getSet().iterator().next();
+		else
+		{
 			int size = node.getSet().size();
 			int item = new Random().nextInt(size);
 			int i = 0;
 			for(InetSocketAddress isa : node.getSet()) {
 				if(i == item)
-					port = isa.getPort();	
+					address = isa;
 				i+=1;
 			}
 		}
-		Request req = new Request(port, Request.join_REQ, node);
+
+		Forwarder f = new Forwarder();
+		Request req = new Request(address, Request.join_REQ, node);
 		try {
 			f.send(req);
 		}catch (IOException e) {
-			System.err.println("Port: " + port + " - Connection refused.");
+			System.err.println(address + " - Connection refused.");
 		}
 	}
 
 	public void addFileReq(int k) {
 		Forwarder f = new Forwarder();
-		Request request = new Request(node.getSucc().getPort(), Request.addFile_REQ, k, node);
+		Request request = new Request(node.getSucc().getAddress(), Request.addFile_REQ, k, node);
 		try {
 			f.send(request);
 		} catch (IOException e) {
@@ -74,7 +80,7 @@ public class ClientHandler implements Serializable{
 
 	public void addFile(Node node, File file, int k) {
 		Forwarder f = new Forwarder();
-		Request req = new Request(node.getPort(), Request.addFile, k, file);
+		Request req = new Request(node.getAddress(), Request.addFile, k, file);
 		try {
 			f.send(req);
 		} catch (IOException e) {

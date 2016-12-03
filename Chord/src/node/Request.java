@@ -2,7 +2,10 @@ package node;
 
 import java.io.File;
 import java.io.Serializable;
+import java.net.InetSocketAddress;
+import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.Map;
 
 import randomFile.RandomFile;
 
@@ -20,49 +23,55 @@ public class Request implements Serializable{
 	public static final int notify = 9;
 	public static final int recovery_REQ = 10;
 	public static final int recovery_RES = 11;
+	public static final int fileList_reassignement = 12;
 	public static final int check_alive = 0;
 
 
-	private int port;	//destination port
+	private InetSocketAddress address;	//destination address
 	private int request;	//request type
 	private Node node;	//source node
 	private File file;
 	private int k;
+	private Hashtable<Integer, File> fileList;
 
-	public Request(int port) {
-		this.port = port;
+	public Request(InetSocketAddress address) {
+		this.address = address;
 	}
 
-	public Request(int port, int request) {
-		this.port = port;
+	public Request(InetSocketAddress address, int request) {
+		this.address = address;
 		this.request = request;
 	}
 
-	public Request(int port, int request, File file) {
-		this(port, request);
+	public Request(InetSocketAddress address, int request, File file) {
+		this(address, request);
 		this.file = file;
 	}
 
-	public Request(int port, int request, Node node) {
-		this(port, request);
+	public Request(InetSocketAddress address, int request, Node node) {
+		this(address, request);
 		this.node = node;
 	}
 
-	public Request(int port, int request, int k, Node node) {
-		this(port, request, node);
+	public Request(InetSocketAddress address, int request, int k, Node node) {
+		this(address, request, node);
 		this.k = k;
 	}
 
-	public Request(int port, int request, int k, File file) {
-		this(port, request, file);
+	public Request(InetSocketAddress address, int request, int k, File file) {
+		this(address, request, file);
 		this.k = k;
 	}
-
-	public int getPort() {
-		return port;
+	public Request(InetSocketAddress address, int request, Hashtable<Integer, File> fileList) {
+		this(address, request);
+		this.fileList = fileList;
 	}
-	public void setPort(int port) {
-		this.port = port;
+
+	public InetSocketAddress getAddress() {
+		return address;
+	}
+	public void setAddress(InetSocketAddress address) {
+		this.address = address;
 	}
 	public int getRequest() {
 		return request;
@@ -88,5 +97,9 @@ public class Request implements Serializable{
 
 	public void setK(int k) {
 		this.k = k;
+	}
+
+	public Hashtable<Integer, File> getFileList() {
+		return fileList;
 	}
 }

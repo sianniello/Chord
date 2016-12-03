@@ -5,10 +5,12 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.nio.charset.Charset;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Random;
@@ -17,7 +19,10 @@ import java.util.TreeMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
+import com.google.common.io.Files;
+
 import randomFile.RandomFile;
 import sun.font.CreatedFontTracker;
 
@@ -31,9 +36,10 @@ import sun.font.CreatedFontTracker;
 public class Node implements Runnable, Serializable{
 
 	private Node succ, pred;
-	private final static int m = 1000;		//keys/ID space
+	private final static int m = 10;		//keys/ID space
 	private int id;
-	private int port;
+	private InetSocketAddress address;
+	HashFunction hf = Hashing.sha1();
 	private ClientHandler ch;
 	private HashSet<InetSocketAddress> set;		//Bottomlay network's addresses
 	private Hashtable<Integer, File> fileList;
@@ -43,9 +49,9 @@ public class Node implements Runnable, Serializable{
 
 	@SuppressWarnings({ "javadoc", "unqualified-field-access" })
 	public Node(int port) throws IOException, ClassNotFoundException {
-		id = Hashing.consistentHash(port, m);
+		this.address = new InetSocketAddress(InetAddress.getLocalHost(), port);
+		id = Math.abs(hf.hashString(address.toString(), Charset.defaultCharset()).asInt())%m;
 		set = new HashSet<>();
-		this.port = port;
 		joinServer();
 		succ = null;
 		fileList = new Hashtable<>();
@@ -73,7 +79,7 @@ public class Node implements Runnable, Serializable{
 	}
 
 	public int getPort() {
-		return port;
+		return address.getPort();
 	}
 
 	/**
@@ -86,7 +92,7 @@ public class Node implements Runnable, Serializable{
 			pred = null;
 			succ = this;
 			Forwarder f = new Forwarder();
-			Request req = new Request(this.getPort(), Request.start_stabilize);
+			Request req = new Request(address, Request.start_stabilize);
 			f.send(req);
 			System.out.println("Node[" + this.getId() + "]: Ring created.");
 			System.out.println(this.toString());
@@ -95,13 +101,17 @@ public class Node implements Runnable, Serializable{
 			System.out.println("Ring already created.");
 	}
 
+	public InetSocketAddress getAddress() {
+		return address;
+	}
+
 	public Hashtable<Integer, File> getFileList() {
 		return fileList;
 	}
 
 	public void addFile() throws IOException {
 		file = new RandomFile().getFile();
-		k = Hashing.consistentHash(file.hashCode(), m);
+		k = Math.abs(hf.hashBytes(Files.toByteArray(file)).asInt())%m;
 
 		if(k == this.getId()) {
 			fileList.put(k, file);
@@ -123,7 +133,7 @@ public class Node implements Runnable, Serializable{
 	@Override
 	public void run() {
 		try {
-			ServerSocket server = new ServerSocket(port);
+			ServerSocket server = new ServerSocket(address.getPort());
 
 			Executor executor = Executors.newFixedThreadPool(1000);
 			while(online) {
@@ -186,15 +196,15 @@ public class Node implements Runnable, Serializable{
 			System.out.println("4 - Go offline");
 
 			choice = scanner.nextInt();
-
+			System.out.println("Your ID: " + n.getId() + "\n");
 			switch (choice) {
 			case 1:
 				n.create();
 				break;
 			case 2:
-				System.out.println("Enter join Node port: ");
-				int port = scanner.nextInt();
-				n.joinRing(port);
+				System.out.println("Enter node");
+				int node = scanner.nextInt();
+				n.joinRing(node);
 				break;
 			case 3:
 				n.addFile();
@@ -209,11 +219,9 @@ public class Node implements Runnable, Serializable{
 		scanner.close();
 	}
 
-	public void joinRing(int port) {
-		if(port > 10100 && port < 10000)
-			port = -1;
+	public void joinRing(int node) {
 		ch = new ClientHandler(this);
-		ch.joinRequest(port);
+		ch.joinRequest(node);
 	}
 
 	public void setId(int id) {
@@ -222,11 +230,11 @@ public class Node implements Runnable, Serializable{
 
 	public String toString() {
 		if(pred == null && succ != null)
-			return "Node[port="+ port + ", ID=" + id + ", SuccID=" + succ.getId() + ", PredID=null]";
+			return "Node[addr="+ address + ", ID=" + id + ", SuccID=" + succ.getId() + ", PredID=null]";
 		else if(pred == null && succ == null)
-			return "Node[port="+ port + ", ID=" + id + ", SuccID=null , PredID=null]"; 
+			return "Node[addr="+ address + ", ID=" + id + ", SuccID=null , PredID=null]"; 
 		else
-			return "Node[port="+ port + ", ID=" + id + ", SuccID=" + succ.getId() + ", PredID=" + pred.getId() + "]"; 
+			return "Node[addr="+ address + ", ID=" + id + ", SuccID=" + succ.getId() + ", PredID=" + pred.getId() + "]"; 
 	}
 
 	public boolean isOnline() {

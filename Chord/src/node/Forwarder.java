@@ -1,6 +1,8 @@
 package node;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
@@ -11,17 +13,12 @@ import java.util.HashSet;
  */
 public class Forwarder {
 
-	private HashSet<Node> ring;
 	private ObjectOutputStream out;
 	private Socket client;
+	private InetSocketAddress address;
 
 	@SuppressWarnings("javadoc")
 	public Forwarder() {
-	}
-
-	@SuppressWarnings({ "javadoc" })
-	public Forwarder(HashSet<Node> ring) {
-		this.ring = ring;
 	}
 
 	/**
@@ -35,36 +32,15 @@ public class Forwarder {
 	 */
 	@SuppressWarnings({ "unqualified-field-access" })
 	public void send(Request request) throws UnknownHostException, IOException {
-		client = new Socket("localhost", request.getPort());
+		client = new Socket(request.getAddress().getHostName(), request.getAddress().getPort());
 		client.setSoTimeout(1000);
 		out = new ObjectOutputStream(client.getOutputStream());
 		out.writeObject(request);
 		client.close();
 	}
 
-	/**
-	 * Broadcast su tutto il ring.
-	 *
-	 * @param message
-	 * @throws IOException
-	 */
-	@SuppressWarnings("unqualified-field-access")
-	public void sendAll(Request request) {
-		for(Node i : ring) {
-			try {
-				client = new Socket("localhost", i.getId());
-				out = new ObjectOutputStream(client.getOutputStream());
-				out.writeObject(request);
-				client.close();
-			} catch (IOException e) {
-				System.err.println(request.getNode().toString());
-				e.printStackTrace();
-			}
-		}
-	}
-
 	public void send(Request request, Node node) throws UnknownHostException, IOException {
-		client = new Socket("localhost", node.getPort());
+		client = new Socket(request.getAddress().getHostName(), request.getAddress().getPort());
 		out = new ObjectOutputStream(client.getOutputStream());
 		out.writeObject(request);
 		client.close();
@@ -72,7 +48,7 @@ public class Forwarder {
 
 	public boolean sendCheck(Request request) {
 		try {
-			client = new Socket("localhost", request.getPort());
+			client = new Socket(request.getAddress().getHostName(), request.getAddress().getPort());
 			client.setSoTimeout(1000);
 			out = new ObjectOutputStream(client.getOutputStream());
 			out.writeObject(request);

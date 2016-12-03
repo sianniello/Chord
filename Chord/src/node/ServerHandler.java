@@ -1,11 +1,14 @@
 package node;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.Random;
 import java.util.TreeMap;
 
@@ -33,6 +36,7 @@ class ServerHandler implements Runnable {
 		this.n = n;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public void run() {
 		try {
@@ -43,11 +47,11 @@ class ServerHandler implements Runnable {
 			case Request.addFile_REQ:
 				int k = request.getK();
 				if(k == n.getId())
-					new Forwarder().send(new Request(request.getNode().getPort(), Request.addFile_RES, n));
+					new Forwarder().send(new Request(request.getNode().getAddress(), Request.addFile_RES, n));
 				else if(k == n.getSucc().getId() || successor(n.getSucc().getId(), n.getId(), k))
-					new Forwarder().send(new Request(request.getNode().getPort(), Request.addFile_RES, n.getSucc()));
+					new Forwarder().send(new Request(request.getNode().getAddress(), Request.addFile_RES, n.getSucc()));
 				else
-					new Forwarder().send(new Request(n.getSucc().getPort(), Request.addFile_REQ, k, request.getNode()));
+					new Forwarder().send(new Request(n.getSucc().getAddress(), Request.addFile_REQ, k, request.getNode()));
 				break;
 
 			case Request.addFile_RES:
@@ -63,11 +67,11 @@ class ServerHandler implements Runnable {
 
 				//a new node request join to a ring's node. It send back successor of new node
 			case Request.join_REQ:
-				System.out.println(n.toString() + ": received a join request from Node[" + request.getNode().getPort() + "]");
+				System.out.println(n.toString() + ": received a join request from Node[" + request.getNode().getAddress() + "]");
 				if(request.getNode().getId() == n.getSucc().getId() || successor(n.getSucc().getId(), n.getId(), request.getNode().getId()))
-					new Forwarder().send(new Request(request.getNode().getPort(), Request.join_RES, n.getSucc()));
+					new Forwarder().send(new Request(request.getNode().getAddress(), Request.join_RES, n.getSucc()));
 				else
-					new Forwarder().send(new Request(n.getSucc().getPort(), Request.join_REQ, request.getNode()));
+					new Forwarder().send(new Request(n.getSucc().getAddress(), Request.join_REQ, request.getNode()));
 				break;
 
 				//joined node update his succ and start stabilization routine
@@ -91,7 +95,7 @@ class ServerHandler implements Runnable {
 				//node send stabilization request to his successor and it reply with his predecessor
 			case Request.stabilize_REQ:
 				Forwarder f = new Forwarder();
-				req = new Request(request.getNode().getPort(), Request.stabilize, n.getPred());
+				req = new Request(request.getNode().getAddress(), Request.stabilize, n.getPred());
 				f.send(req);
 				break;
 
@@ -112,19 +116,43 @@ class ServerHandler implements Runnable {
 				x = request.getNode();
 				if(n.getPred() != null && n.getPred().getId() == n.getId())
 					n.setPred(x);
+
 				if(n.getPred() == null || predecessor(n.getPred().getId(), x.getId(), n.getId())) {
+
+					synchronized (this) {
+						if (n.getFileList().size() > 0 && n.getId() != x.getId()) {
+							Hashtable<Integer, File> fileListReassign = new Hashtable<>();
+							for (int key2 : n.getFileList().keySet()) {
+								if (predecessor(n.getPred().getId(), key2, n.getId())) {
+									fileListReassign.put(key2, n.getFileList().get(key2));
+									n.getFileList().remove(key2);
+								}
+							}
+							if (!fileListReassign.isEmpty()) {
+								new Forwarder().send(new Request(n.getPred().getAddress(),
+										Request.fileList_reassignement, fileListReassign));
+								System.out.println(n.toString() + ": file list reassignemnt");
+								System.out.println(n.toString() + " -> " + fileListReassign.toString() + " -> "
+										+ n.getPred().toString());
+							}
+						}
+					}
 					n.setPred(x);
 					System.out.println(n.toString() + ": Predecessor updated, now it's " + n.getPred().getId());
 				}
 				break;
 
+			case Request.fileList_reassignement:
+				n.getFileList().putAll(request.getFileList());
+				break;
+
 			case Request.recovery_REQ:
 				if(n.getId() == request.getNode().getId())
-					new Forwarder().send(new Request(request.getNode().getPort(), Request.recovery_RES, n));
+					new Forwarder().send(new Request(request.getNode().getAddress(), Request.recovery_RES, n));
 				else if(successor(n.getSucc().getId(), n.getId(), request.getNode().getId()))
-					new Forwarder().send(new Request(request.getNode().getPort(), Request.recovery_RES, n.getSucc()));
+					new Forwarder().send(new Request(request.getNode().getAddress(), Request.recovery_RES, n.getSucc()));
 				else
-					new Forwarder().send(new Request(n.getSucc().getPort(), Request.recovery_REQ, request.getNode()));
+					new Forwarder().send(new Request(n.getSucc().getAddress(), Request.recovery_REQ, request.getNode()));
 				break;
 
 			case Request.recovery_RES:
@@ -149,7 +177,7 @@ class ServerHandler implements Runnable {
 	private void notifySuccessor() {
 		if(n.isOnline()) {
 			Forwarder f = new Forwarder();
-			Request req = new Request(n.getSucc().getPort(), Request.notify, n);
+			Request req = new Request(n.getSucc().getAddress(), Request.notify, n);
 			try {
 				f.send(req);
 			} catch (IOException e) {
@@ -157,7 +185,7 @@ class ServerHandler implements Runnable {
 					n.setRecovery(true);
 					for(InetSocketAddress isa : n.getSet())
 						try {
-							new Forwarder().send(new Request(isa.getPort(), Request.recovery_REQ, n));
+							new Forwarder().send(new Request(isa, Request.recovery_REQ, n));
 						} catch (IOException e1) {
 						}
 				}
@@ -179,7 +207,7 @@ class ServerHandler implements Runnable {
 					node.setStabilization(true);
 					while(node.getStabilization() && node.isOnline()) {
 						Forwarder f = new Forwarder();
-						req = new Request(node.getSucc().getPort(), Request.stabilize_REQ, node);
+						req = new Request(node.getSucc().getAddress(), Request.stabilize_REQ, node);
 						try {
 							f.send(req);
 						} catch (IOException e1) {
@@ -187,7 +215,7 @@ class ServerHandler implements Runnable {
 								n.setRecovery(true);
 								for(InetSocketAddress isa : n.getSet())
 									try {
-										new Forwarder().send(new Request(isa.getPort(), Request.recovery_REQ, n));
+										new Forwarder().send(new Request(isa, Request.recovery_REQ, n));
 									} catch (IOException e2) {
 									}
 							}
@@ -212,13 +240,17 @@ class ServerHandler implements Runnable {
 			(new Runnable() {
 				@Override
 				public void run() {
-					Request req = new Request(n.getPred().getPort(), Request.check_alive, n);
+					Request req = new Request(n.getPred().getAddress(), Request.check_alive, n);
 					Forwarder f = new Forwarder();
 					if(!f.sendCheck(req)) {
 						System.err.println(n.getPred().toString() + " HAS FAILED.");
-						n.getFileList().putAll(n.getPred().getFileList());
-						System.err.println(n.toString() + ": file list recovered.");
-						System.err.println(n.getFileList().toString());
+						if(n.getPred().getFileList().size() == 0)
+							System.out.println("No list to recover");
+						else {
+							n.getFileList().putAll(n.getPred().getFileList());
+							System.err.println(n.toString() + ": file list recovered.");
+							System.out.println(n.getFileList().toString());
+						}
 						n.setPred(null);
 					}
 				}
@@ -227,7 +259,7 @@ class ServerHandler implements Runnable {
 
 
 	/**
-	 * This function verify if x appartiene (n, s)
+	 * This function verify if x in (n, s)
 	 */
 	boolean successor(int s, int n, int x) {
 		if(x == n || x == s) return false;
@@ -237,7 +269,7 @@ class ServerHandler implements Runnable {
 	}
 
 	/**
-	 * This function verify if x appartiene (p, n)
+	 * This function verify if x in (p, n)
 	 */
 	boolean predecessor(int p, int x, int n) {
 		if(x == n || x == p) return false;

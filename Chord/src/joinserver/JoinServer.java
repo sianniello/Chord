@@ -49,9 +49,10 @@ public class JoinServer {
 							try {
 								Socket client = new Socket(isa.getHostName(), isa.getPort());
 								ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
-								out.writeObject(new Request(isa.getPort(), Request.check_alive));
+								out.writeObject(new Request(isa, Request.check_alive));
 								client.close();
 								Thread.sleep(10000);
+								System.out.println(set.toString());
 							} catch (IOException | InterruptedException e) {
 								set.remove(isa);
 								System.err.println(isa + " is offline");
