@@ -111,13 +111,16 @@ class ServerHandler implements Runnable {
 				if(n.getPred() == null)
 					n.setPred(n);
 				if(n.getId() != x.getId() && (n.getPred().getId() == n.getId() || predecessor(n.getPred().getId(), x.getId(), n.getId()))) {
-					Hashtable<Integer, File> copy = (Hashtable<Integer, File>) n.getFileList().clone();
-					Hashtable<Integer, File> reassign = new Hashtable<>();
-					for(int key2 : copy.keySet()) 
-						if(predecessor(n.getPred().getId(), key2, x.getId()))
-							reassign.put(key2, copy.get(key2));
+					if(!n.getFileList().isEmpty()){
+						Hashtable<Integer, File> copy = (Hashtable<Integer, File>) n.getFileList().clone();
+						Hashtable<Integer, File> reassign = new Hashtable<>();
+						for(int key2 : copy.keySet()) 
+							if(predecessor(n.getPred().getId(), key2, x.getId()))
+								reassign.put(key2, copy.get(key2));
+						new Forwarder().send(new Request(x.getAddress(), Request.reassign, reassign));
+					}
 					n.setPred(x);
-					new Forwarder().send(new Request(x.getAddress(), Request.reassign, reassign));
+
 					System.out.println(n.toString() + ": Predecessor updated, now it's " + n.getPred().getId());
 				}
 				break;
@@ -125,7 +128,7 @@ class ServerHandler implements Runnable {
 			case Request.replica:
 				n.saveReplica(request.getK(), request.getFile());
 				break;
-				
+
 			case Request.reassign:
 				n.Reassignment(request.getFileList());
 				break;
@@ -187,6 +190,10 @@ class ServerHandler implements Runnable {
 		}
 	}
 
+	/**
+	 * This function verify in node is online. Predecessor node in particular
+	 * @param node
+	 */
 	public void check_predecessor(Node node) {
 		Request req = null;
 		if(n.isOnline() && n.getPred() != null)
