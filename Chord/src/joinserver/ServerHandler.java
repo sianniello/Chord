@@ -29,7 +29,7 @@ class ServerHandler implements Runnable {
 			System.out.println("Server " + Thread.currentThread().getName() + " ricevuto: " + address.toString()); 
 
 			synchronized(this){
-				if(!set.contains(address))
+				if(!set.contains(address)) 
 					set.add(address);
 			}
 
