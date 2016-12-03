@@ -3,6 +3,7 @@ package node;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Random;
@@ -46,7 +47,7 @@ class ServerHandler implements Runnable {
 				else if(k == n.getSucc().getId() || successor(n.getSucc().getId(), n.getId(), k))
 					new Forwarder().send(new Request(request.getNode().getPort(), Request.addFile_RES, n.getSucc()));
 				else
-					new Forwarder().send(new Request(n.getSucc().getPort(), Request.addFile_REQ, request.getNode()));
+					new Forwarder().send(new Request(n.getSucc().getPort(), Request.addFile_REQ, k, request.getNode()));
 				break;
 
 			case Request.addFile_RES:
@@ -117,6 +118,21 @@ class ServerHandler implements Runnable {
 				}
 				break;
 
+			case Request.recovery_REQ:
+				if(n.getId() == request.getNode().getId())
+					new Forwarder().send(new Request(request.getNode().getPort(), Request.recovery_RES, n));
+				else if(successor(n.getSucc().getId(), n.getId(), request.getNode().getId()))
+					new Forwarder().send(new Request(request.getNode().getPort(), Request.recovery_RES, n.getSucc()));
+				else
+					new Forwarder().send(new Request(n.getSucc().getPort(), Request.recovery_REQ, request.getNode()));
+				break;
+
+			case Request.recovery_RES:
+				n.setRecovery(false);
+				n.setSucc(request.getNode());
+				System.out.println(n.toString() + ": Find new successor, now it's " + n.getSucc().getId());
+				break;
+
 			case Request.check_alive:
 				//dummy request
 				break;
@@ -125,8 +141,8 @@ class ServerHandler implements Runnable {
 				break;
 			}
 		} catch (IOException | ClassNotFoundException e) {
-			System.err.println("Connection lost!" + n.toString());
-			e.printStackTrace();
+			System.err.println(n.toString() + ": Connection err!");
+			//e.printStackTrace();
 		} 
 	}
 
@@ -137,14 +153,20 @@ class ServerHandler implements Runnable {
 			try {
 				f.send(req);
 			} catch (IOException e) {
-				System.err.println(n.getSucc().toString() + " HAS FAILED.");
-				//TODO recover routine
+				if(!n.getRecovery()) {
+					n.setRecovery(true);
+					for(InetSocketAddress isa : n.getSet())
+						try {
+							new Forwarder().send(new Request(isa.getPort(), Request.recovery_REQ, n));
+						} catch (IOException e1) {
+						}
+				}
 			}
 		}
 	}
 
 	/**
-	 * called periodically. n asks the successor
+	 * Called periodically. n asks the successor
 	 * about its predecessor, verifies if n's immediate
 	 * successor is consistent, and tells the successor about n
 	 * 
@@ -161,8 +183,14 @@ class ServerHandler implements Runnable {
 						try {
 							f.send(req);
 						} catch (IOException e1) {
-							System.err.println(node.getSucc().toString() + " HAS FAILED.");
-							//TODO recover routine
+							if(!n.getRecovery()) {
+								n.setRecovery(true);
+								for(InetSocketAddress isa : n.getSet())
+									try {
+										new Forwarder().send(new Request(isa.getPort(), Request.recovery_REQ, n));
+									} catch (IOException e2) {
+									}
+							}
 						}
 
 						if(node.getPred() != null)
@@ -180,19 +208,18 @@ class ServerHandler implements Runnable {
 	}
 
 	public void check_predecessor(Node node) {
-		if(n.isOnline())
+		if(n.isOnline() && n.getPred() != null)
 			(new Runnable() {
 				@Override
 				public void run() {
-					if(n.getPred() != null) {
-						Request req = new Request(n.getPred().getPort(), Request.check_alive, n);
-						Forwarder f = new Forwarder();
-						if(!f.sendCheck(req)) {
-							System.err.println(n.getPred().toString() + " HAS FAILED.");
-							n.getFileList().putAll(n.getPred().getFileList());
-							System.err.println(n.toString() + " file list recovered.");
-							n.setPred(null);
-						}
+					Request req = new Request(n.getPred().getPort(), Request.check_alive, n);
+					Forwarder f = new Forwarder();
+					if(!f.sendCheck(req)) {
+						System.err.println(n.getPred().toString() + " HAS FAILED.");
+						n.getFileList().putAll(n.getPred().getFileList());
+						System.err.println(n.toString() + ": file list recovered.");
+						System.err.println(n.getFileList().toString());
+						n.setPred(null);
 					}
 				}
 			}).run();
@@ -200,7 +227,7 @@ class ServerHandler implements Runnable {
 
 
 	/**
-	 * this function 
+	 * This function verify if x appartiene (n, s)
 	 */
 	boolean successor(int s, int n, int x) {
 		if(x == n || x == s) return false;
@@ -209,6 +236,9 @@ class ServerHandler implements Runnable {
 		else return false;
 	}
 
+	/**
+	 * This function verify if x appartiene (p, n)
+	 */
 	boolean predecessor(int p, int x, int n) {
 		if(x == n || x == p) return false;
 		if((n - p + m)%m > (n - x + m)%m)

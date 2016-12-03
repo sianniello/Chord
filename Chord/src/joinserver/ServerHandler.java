@@ -34,7 +34,7 @@ class ServerHandler implements Runnable {
 			}
 
 			out.writeObject(set);
-
+			
 		} catch (IOException | ClassNotFoundException ex) {
 			Logger.getLogger(ServerHandler.class.getName()).log(Level.SEVERE, null, ex);
 		}

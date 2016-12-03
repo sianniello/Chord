@@ -10,6 +10,7 @@ import java.net.Socket;
 import java.util.HashSet;
 import java.util.Random;
 
+@SuppressWarnings("serial")
 public class ClientHandler implements Serializable{
 
 	private Node node;
