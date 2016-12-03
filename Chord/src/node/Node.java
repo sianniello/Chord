@@ -2,8 +2,6 @@ package node;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -13,9 +11,7 @@ import java.net.UnknownHostException;
 import java.nio.charset.Charset;
 import java.util.HashSet;
 import java.util.Hashtable;
-import java.util.Random;
 import java.util.Scanner;
-import java.util.TreeMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -24,7 +20,6 @@ import com.google.common.hash.Hashing;
 import com.google.common.io.Files;
 
 import randomFile.RandomFile;
-import sun.font.CreatedFontTracker;
 
 /**
  * This is the main class, its include client role
@@ -35,7 +30,7 @@ import sun.font.CreatedFontTracker;
 @SuppressWarnings("serial")
 public class Node implements Runnable, Serializable{
 
-	private Node succ, pred;
+	private Node succ, succ2, pred;
 	private final static int m = 10;		//keys/ID space
 	private int id;
 	private InetSocketAddress node_address;
@@ -43,12 +38,10 @@ public class Node implements Runnable, Serializable{
 	private ClientHandler ch;
 	private HashSet<InetSocketAddress> set;		//Bottomlay network's addresses
 	private Hashtable<Integer, File> fileList;
+	private Hashtable<Integer, File> replica;
 	private File file;
-	private boolean online, stab, recovery;
+	private boolean online, stab;
 	private int k;
-	private String server;
-	private int server_port;
-
 	@SuppressWarnings({ "javadoc", "unqualified-field-access" })
 	public Node(int port) throws IOException, ClassNotFoundException {
 		this.node_address = new InetSocketAddress(InetAddress.getLocalHost(), port);
@@ -57,9 +50,9 @@ public class Node implements Runnable, Serializable{
 		joinServer(null);
 		succ = null;
 		fileList = new Hashtable<>();
+		replica = new Hashtable<>();
 		online = true;
 		stab = false;
-		recovery = false;
 		ch = new ClientHandler(this);
 	}
 
@@ -70,18 +63,18 @@ public class Node implements Runnable, Serializable{
 		joinServer(join_server);
 		succ = null;
 		fileList = new Hashtable<>();
+		replica = new Hashtable<>();
 		online = true;
 		stab = false;
-		recovery = false;
 		ch = new ClientHandler(this);
 	}
 
-	public boolean isRecovery() {
-		return recovery;
+	public Hashtable<Integer, File> getReplica() {
+		return replica;
 	}
 
-	public void setRecovery(boolean recovery) {
-		this.recovery = recovery;
+	public void setReplica(Hashtable<Integer, File> replica) {
+		this.replica = replica;
 	}
 
 	private void joinServer(InetSocketAddress join_server) throws UnknownHostException, IOException, ClassNotFoundException {
@@ -130,6 +123,7 @@ public class Node implements Runnable, Serializable{
 
 		if(k == this.getId()) {
 			fileList.put(k, file);
+			new Forwarder().send(new Request(succ.getAddress(), Request.replica, k, file));
 			System.out.println(this.toString() + ": save file " + file.getName() + " with key " + k);
 			System.out.println(this.toString() + ": Filelist " + this.getFileList().toString());
 		}
@@ -203,7 +197,6 @@ public class Node implements Runnable, Serializable{
 		int node_port = scanner.nextInt();
 		System.out.println("Enter node port JoinServer address (address:p) or leave blank to default");
 		String input = scanner.next();
-		scanner.close();
 		String addr[] = input.split(":");
 		
 		Node n;
@@ -211,6 +204,7 @@ public class Node implements Runnable, Serializable{
 			n = new Node(node_port, InetSocketAddress.createUnresolved(addr[0], Integer.parseInt(addr[1])));
 		} catch (NumberFormatException | ClassNotFoundException e) {
 			System.err.println("Invalid address format");
+			scanner.close();
 			return ;
 		}
 		
@@ -245,10 +239,6 @@ public class Node implements Runnable, Serializable{
 			}
 		}
 		scanner.close();
-	}
-
-	private void setJoinServer(String ip, int port) {
-		
 	}
 
 	public void joinRing(int node) {
@@ -287,8 +277,20 @@ public class Node implements Runnable, Serializable{
 		return stab;
 	}
 
-	public boolean getRecovery() {
-		return recovery;
+	public void saveReplica(int k2, File file2) {
+		this.getReplica().put(k2, file2);
+	}
+
+	public void Reassignment(Hashtable<Integer, File> fileList2) {
+		this.getFileList().putAll(fileList2);
+	}
+
+	public Node getSucc2() {
+		return succ2;
+	}
+
+	public void setSucc2(Node succ2) {
+		this.succ2 = succ2;
 	}
 
 }

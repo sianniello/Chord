@@ -21,10 +21,9 @@ public class Request implements Serializable{
 	public static final int stabilize_REQ = 7;
 	public static final int stabilize = 8;
 	public static final int notify = 9;
-	public static final int recovery_REQ = 10;
-	public static final int recovery_RES = 11;
-	public static final int fileList_reassignement = 12;
 	public static final int check_alive = 0;
+	public static final int replica = 10;
+	public static final int reassign = 11;
 
 
 	private InetSocketAddress address;	//destination address

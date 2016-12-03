@@ -4,15 +4,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.net.InetSocketAddress;
-import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Random;
-import java.util.TreeMap;
-
-import com.google.common.hash.Hashing;
 
 class ServerHandler implements Runnable {
 
@@ -114,51 +108,26 @@ class ServerHandler implements Runnable {
 				//node receive a notify message
 			case Request.notify:
 				x = request.getNode();
-				if(n.getPred() != null && n.getPred().getId() == n.getId())
+				if(n.getPred() == null)
+					n.setPred(n);
+				if(n.getId() != x.getId() && (n.getPred().getId() == n.getId() || predecessor(n.getPred().getId(), x.getId(), n.getId()))) {
+					Hashtable<Integer, File> copy = (Hashtable<Integer, File>) n.getFileList().clone();
+					Hashtable<Integer, File> reassign = new Hashtable<>();
+					for(int key2 : copy.keySet()) 
+						if(predecessor(n.getPred().getId(), key2, x.getId()))
+							reassign.put(key2, copy.get(key2));
 					n.setPred(x);
-
-				if(n.getPred() == null || predecessor(n.getPred().getId(), x.getId(), n.getId())) {
-
-					synchronized (this) {
-						if (n.getFileList().size() > 0 && n.getId() != x.getId()) {
-							Hashtable<Integer, File> fileListReassign = new Hashtable<>();
-							for (int key2 : n.getFileList().keySet()) {
-								if (predecessor(n.getPred().getId(), key2, n.getId())) {
-									fileListReassign.put(key2, n.getFileList().get(key2));
-									n.getFileList().remove(key2);
-								}
-							}
-							if (!fileListReassign.isEmpty()) {
-								new Forwarder().send(new Request(n.getPred().getAddress(),
-										Request.fileList_reassignement, fileListReassign));
-								System.out.println(n.toString() + ": file list reassignemnt");
-								System.out.println(n.toString() + " -> " + fileListReassign.toString() + " -> "
-										+ n.getPred().toString());
-							}
-						}
-					}
-					n.setPred(x);
+					new Forwarder().send(new Request(x.getAddress(), Request.reassign, reassign));
 					System.out.println(n.toString() + ": Predecessor updated, now it's " + n.getPred().getId());
 				}
 				break;
 
-			case Request.fileList_reassignement:
-				n.getFileList().putAll(request.getFileList());
+			case Request.replica:
+				n.saveReplica(request.getK(), request.getFile());
 				break;
-
-			case Request.recovery_REQ:
-				if(n.getId() == request.getNode().getId())
-					new Forwarder().send(new Request(request.getNode().getAddress(), Request.recovery_RES, n));
-				else if(successor(n.getSucc().getId(), n.getId(), request.getNode().getId()))
-					new Forwarder().send(new Request(request.getNode().getAddress(), Request.recovery_RES, n.getSucc()));
-				else
-					new Forwarder().send(new Request(n.getSucc().getAddress(), Request.recovery_REQ, request.getNode()));
-				break;
-
-			case Request.recovery_RES:
-				n.setRecovery(false);
-				n.setSucc(request.getNode());
-				System.out.println(n.toString() + ": Find new successor, now it's " + n.getSucc().getId());
+				
+			case Request.reassign:
+				n.Reassignment(request.getFileList());
 				break;
 
 			case Request.check_alive:
@@ -170,7 +139,7 @@ class ServerHandler implements Runnable {
 			}
 		} catch (IOException | ClassNotFoundException e) {
 			System.err.println(n.toString() + ": Connection err!");
-			//e.printStackTrace();
+			e.printStackTrace();
 		} 
 	}
 
@@ -181,14 +150,7 @@ class ServerHandler implements Runnable {
 			try {
 				f.send(req);
 			} catch (IOException e) {
-				if(!n.getRecovery()) {
-					n.setRecovery(true);
-					for(InetSocketAddress isa : n.getSet())
-						try {
-							new Forwarder().send(new Request(isa, Request.recovery_REQ, n));
-						} catch (IOException e1) {
-						}
-				}
+				//TODO successor failed
 			}
 		}
 	}
@@ -201,60 +163,40 @@ class ServerHandler implements Runnable {
 	 * @param node
 	 */
 	public void stabilize(Node node) {
-		if(!n.getStabilization() && n.isOnline())
-			new Thread(new Runnable() {
-				public void run() {
-					node.setStabilization(true);
-					while(node.getStabilization() && node.isOnline()) {
-						Forwarder f = new Forwarder();
-						req = new Request(node.getSucc().getAddress(), Request.stabilize_REQ, node);
-						try {
-							f.send(req);
-						} catch (IOException e1) {
-							if(!n.getRecovery()) {
-								n.setRecovery(true);
-								for(InetSocketAddress isa : n.getSet())
-									try {
-										new Forwarder().send(new Request(isa, Request.recovery_REQ, n));
-									} catch (IOException e2) {
-									}
-							}
-						}
-
-						if(node.getPred() != null)
-							check_predecessor(node);
-
-						System.out.println(node.toString() + ": stabilization routine...");
-						try {
-							Thread.sleep(new Random().nextInt(5000) + 2000);
-						} catch (InterruptedException e) {
-							e.printStackTrace();
-						}
-					}
+		if(!n.getStabilization() && n.isOnline()) {
+			node.setStabilization(true);
+			while(node.getStabilization() && node.isOnline()) {
+				Forwarder f = new Forwarder();
+				req = new Request(node.getSucc().getAddress(), Request.stabilize_REQ, node);
+				try {
+					f.send(req);
+				} catch (IOException e1) {
+					//TODO successor failed
 				}
-			}, node.toString() + ": stabilizator").start();
+
+				if(node.getPred() != null)
+					check_predecessor(node);
+
+				System.out.println(node.toString() + ": stabilization routine...");
+				try {
+					Thread.sleep(new Random().nextInt(5000) + 2000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+		}
 	}
 
 	public void check_predecessor(Node node) {
+		Request req = null;
 		if(n.isOnline() && n.getPred() != null)
-			(new Runnable() {
-				@Override
-				public void run() {
-					Request req = new Request(n.getPred().getAddress(), Request.check_alive, n);
-					Forwarder f = new Forwarder();
-					if(!f.sendCheck(req)) {
-						System.err.println(n.getPred().toString() + " HAS FAILED.");
-						if(n.getPred().getFileList().size() == 0)
-							System.out.println("No list to recover");
-						else {
-							n.getFileList().putAll(n.getPred().getFileList());
-							System.err.println(n.toString() + ": file list recovered.");
-							System.out.println(n.getFileList().toString());
-						}
-						n.setPred(null);
-					}
-				}
-			}).run();
+			req = new Request(n.getPred().getAddress(), Request.check_alive, n);
+		Forwarder f = new Forwarder();
+		if(!f.sendCheck(req)) {
+			System.err.println(n.getPred().toString() + " HAS FAILED.");
+			//TODO recover file procedure
+			n.setPred(null);
+		}
 	}
 
 
