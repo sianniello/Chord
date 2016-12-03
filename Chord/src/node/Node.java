@@ -38,7 +38,7 @@ public class Node implements Runnable, Serializable{
 	private Node succ, pred;
 	private final static int m = 10;		//keys/ID space
 	private int id;
-	private InetSocketAddress address;
+	private InetSocketAddress node_address;
 	HashFunction hf = Hashing.sha1();
 	private ClientHandler ch;
 	private HashSet<InetSocketAddress> set;		//Bottomlay network's addresses
@@ -46,13 +46,28 @@ public class Node implements Runnable, Serializable{
 	private File file;
 	private boolean online, stab, recovery;
 	private int k;
+	private String server;
+	private int server_port;
 
 	@SuppressWarnings({ "javadoc", "unqualified-field-access" })
 	public Node(int port) throws IOException, ClassNotFoundException {
-		this.address = new InetSocketAddress(InetAddress.getLocalHost(), port);
-		id = Math.abs(hf.hashString(address.toString(), Charset.defaultCharset()).asInt())%m;
+		this.node_address = new InetSocketAddress(InetAddress.getLocalHost(), port);
+		id = Math.abs(hf.hashString(node_address.toString(), Charset.defaultCharset()).asInt())%m;
 		set = new HashSet<>();
-		joinServer();
+		joinServer(null);
+		succ = null;
+		fileList = new Hashtable<>();
+		online = true;
+		stab = false;
+		recovery = false;
+		ch = new ClientHandler(this);
+	}
+
+	public Node(int node_port, InetSocketAddress join_server) throws ClassNotFoundException, IOException {
+		this.node_address = new InetSocketAddress(InetAddress.getLocalHost(), node_port);
+		id = Math.abs(hf.hashString(node_address.toString(), Charset.defaultCharset()).asInt())%m;
+		set = new HashSet<>();
+		joinServer(join_server);
 		succ = null;
 		fileList = new Hashtable<>();
 		online = true;
@@ -69,9 +84,9 @@ public class Node implements Runnable, Serializable{
 		this.recovery = recovery;
 	}
 
-	private void joinServer() throws UnknownHostException, IOException, ClassNotFoundException {
+	private void joinServer(InetSocketAddress join_server) throws UnknownHostException, IOException, ClassNotFoundException {
 		ch = new ClientHandler(this);
-		ch.joinServer();
+		ch.joinServer(join_server);
 	}
 
 	public void setSet(HashSet<InetSocketAddress> set) {
@@ -79,7 +94,7 @@ public class Node implements Runnable, Serializable{
 	}
 
 	public int getPort() {
-		return address.getPort();
+		return node_address.getPort();
 	}
 
 	/**
@@ -92,7 +107,7 @@ public class Node implements Runnable, Serializable{
 			pred = null;
 			succ = this;
 			Forwarder f = new Forwarder();
-			Request req = new Request(address, Request.start_stabilize);
+			Request req = new Request(node_address, Request.start_stabilize);
 			f.send(req);
 			System.out.println("Node[" + this.getId() + "]: Ring created.");
 			System.out.println(this.toString());
@@ -102,7 +117,7 @@ public class Node implements Runnable, Serializable{
 	}
 
 	public InetSocketAddress getAddress() {
-		return address;
+		return node_address;
 	}
 
 	public Hashtable<Integer, File> getFileList() {
@@ -133,7 +148,7 @@ public class Node implements Runnable, Serializable{
 	@Override
 	public void run() {
 		try {
-			ServerSocket server = new ServerSocket(address.getPort());
+			ServerSocket server = new ServerSocket(node_address.getPort());
 
 			Executor executor = Executors.newFixedThreadPool(1000);
 			while(online) {
@@ -185,7 +200,14 @@ public class Node implements Runnable, Serializable{
 		Scanner scanner = new Scanner(System.in);
 
 		System.out.println("Enter node port (range 10000-10100): ");
-		Node n = new Node(scanner.nextInt());
+		int node_port = scanner.nextInt();
+		System.out.println("Enter node port JoinServer address (address:p) or leave blank to default");
+		String input = scanner.next();
+		
+		String addr[] = input.split(":");
+		
+		Node n = new Node(node_port, InetSocketAddress.createUnresolved(addr[0], Integer.parseInt(addr[1])));
+		
 		new Thread(n, "Node[" + n.getId() + "]").start();
 		while(choice != 4) {
 			System.out.println("Choose operation");
@@ -219,6 +241,10 @@ public class Node implements Runnable, Serializable{
 		scanner.close();
 	}
 
+	private void setJoinServer(String ip, int port) {
+		
+	}
+
 	public void joinRing(int node) {
 		ch = new ClientHandler(this);
 		ch.joinRequest(node);
@@ -230,11 +256,11 @@ public class Node implements Runnable, Serializable{
 
 	public String toString() {
 		if(pred == null && succ != null)
-			return "Node[addr="+ address + ", ID=" + id + ", SuccID=" + succ.getId() + ", PredID=null]";
+			return "Node[addr="+ node_address + ", ID=" + id + ", SuccID=" + succ.getId() + ", PredID=null]";
 		else if(pred == null && succ == null)
-			return "Node[addr="+ address + ", ID=" + id + ", SuccID=null , PredID=null]"; 
+			return "Node[addr="+ node_address + ", ID=" + id + ", SuccID=null , PredID=null]"; 
 		else
-			return "Node[addr="+ address + ", ID=" + id + ", SuccID=" + succ.getId() + ", PredID=" + pred.getId() + "]"; 
+			return "Node[addr="+ node_address + ", ID=" + id + ", SuccID=" + succ.getId() + ", PredID=" + pred.getId() + "]"; 
 	}
 
 	public boolean isOnline() {
