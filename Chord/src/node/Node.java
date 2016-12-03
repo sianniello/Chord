@@ -31,14 +31,14 @@ import sun.font.CreatedFontTracker;
 public class Node implements Runnable, Serializable{
 
 	private Node succ, pred;
-	private final static int m = 8;		//keys/ID space
+	private final static int m = 1000;		//keys/ID space
 	private int id;
 	private int port;
 	private ClientHandler ch;
 	private HashSet<InetSocketAddress> set;		//Bottomlay network's addresses
 	private Hashtable<Integer, File> fileList;
 	private File file;
-	private boolean online, stab;
+	private boolean online, stab, recovery;
 	private int k;
 
 	@SuppressWarnings({ "javadoc", "unqualified-field-access" })
@@ -51,7 +51,16 @@ public class Node implements Runnable, Serializable{
 		fileList = new Hashtable<>();
 		online = true;
 		stab = false;
+		recovery = false;
 		ch = new ClientHandler(this);
+	}
+
+	public boolean isRecovery() {
+		return recovery;
+	}
+
+	public void setRecovery(boolean recovery) {
+		this.recovery = recovery;
 	}
 
 	private void joinServer() throws UnknownHostException, IOException, ClassNotFoundException {
@@ -99,10 +108,8 @@ public class Node implements Runnable, Serializable{
 			System.out.println(this.toString() + ": save file " + file.getName() + " with key " + k);
 			System.out.println(this.toString() + ": Filelist " + this.getFileList().toString());
 		}
-		else {
-			ch = new ClientHandler(this);
-			ch.addFileReq(k);
-		}
+		else 
+			new ClientHandler(this).addFileReq(k);
 	}
 
 	public void saveFile(Node node) {
@@ -238,6 +245,10 @@ public class Node implements Runnable, Serializable{
 
 	public boolean getStabilization() {
 		return stab;
+	}
+
+	public boolean getRecovery() {
+		return recovery;
 	}
 
 }
