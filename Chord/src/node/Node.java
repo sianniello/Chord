@@ -192,7 +192,7 @@ public class Node implements Runnable, Serializable{
 	}
 
 	public static void main(String[] args) throws IOException {
-
+		Node n = null;
 		int choice = 0;
 		Scanner scanner = new Scanner(System.in);
 
@@ -202,7 +202,6 @@ public class Node implements Runnable, Serializable{
 		String input = scanner.next();
 		String addr[] = input.split(":");
 
-		Node n;
 		try {
 			n = new Node(node_port, InetSocketAddress.createUnresolved(addr[0], Integer.parseInt(addr[1])));
 		} catch (NumberFormatException | ClassNotFoundException e) {
@@ -212,13 +211,14 @@ public class Node implements Runnable, Serializable{
 		}
 
 		new Thread(n, "Node[" + n.getId() + "]").start();
-		while(choice != 4) {
+		while(choice != 5) {
 			System.out.println("Choose operation");
 			System.out.println("-------------------------\n");
 			System.out.println("1 - Create ring");
 			System.out.println("2 - Join Ring");
 			System.out.println("3 - Add a file");
-			System.out.println("4 - Go offline");
+			System.out.println("4 - File list");
+			System.out.println("5 - Go offline");
 
 			choice = scanner.nextInt();
 			System.out.println("Your ID: " + n.getId() + "\n");
@@ -229,7 +229,8 @@ public class Node implements Runnable, Serializable{
 			case 2:
 				int i = 1;
 				for(InetSocketAddress isa : n.getSet()) {
-					System.out.println(i + ". " + isa.toString());
+					if(isa.getAddress().equals(n.getAddress().getAddress()))
+						System.out.println(i + ". " + isa.toString());
 					i++;
 				}
 				System.out.println("Enter node index");
@@ -240,15 +241,24 @@ public class Node implements Runnable, Serializable{
 				n.addFile();
 				break;
 			case 4:
+				System.out.println(n.toString() + " " + n.getFileList());
+				scanner.hasNext();
+				break;
+			case 5:
 				n.setOffline();
 				break;
 			default:
 				// The user input an unexpected choice.
+				break;
 			}
 		}
 		scanner.close();
 	}
 
+	/**
+	 * Node wants to enter the ring through	target node
+	 * @param node = traget node
+	 */
 	public void joinRing(int node) {
 		ch = new ClientHandler(this);
 		ch.joinRequest(node);
