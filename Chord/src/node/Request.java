@@ -22,8 +22,10 @@ public class Request implements Serializable{
 	public static final int stabilize = 8;
 	public static final int notify = 9;
 	public static final int check_alive = 0;
-	public static final int replica = 10;
+	public static final int replicaFile = 10;
 	public static final int reassign = 11;
+	public static final int replica_REQ = 12;
+	public static final int replicaList = 13;
 
 
 	private InetSocketAddress address;	//destination address

@@ -47,7 +47,7 @@ public class Node implements Runnable, Serializable{
 		id = Math.abs(hf.hashString(node_address.toString(), Charset.defaultCharset()).asInt())%m;
 		set = new HashSet<>();
 		joinServer(null);
-		succ = null;
+		succ = succ2 = null;
 		fileList = new Hashtable<>();
 		replica = new Hashtable<>();
 		online = true;
@@ -60,7 +60,7 @@ public class Node implements Runnable, Serializable{
 		id = Math.abs(hf.hashString(node_address.toString(), Charset.defaultCharset()).asInt())%m;
 		set = new HashSet<>();
 		joinServer(join_server);
-		succ = null;
+		succ = succ2 = null;
 		fileList = new Hashtable<>();
 		replica = new Hashtable<>();
 		online = true;
@@ -68,7 +68,7 @@ public class Node implements Runnable, Serializable{
 		ch = new ClientHandler(this);
 	}
 
-	public Hashtable<Integer, File> getReplica() {
+	public synchronized Hashtable<Integer, File> getReplica() {
 		return replica;
 	}
 
@@ -97,11 +97,11 @@ public class Node implements Runnable, Serializable{
 	public void create() throws IOException {
 		if(succ == null) {		//if succ == null ring isn't created yet
 			pred = null;
-			succ = this;
+			succ = succ2 = this;
 			Forwarder f = new Forwarder();
 			Request req = new Request(node_address, Request.start_stabilize);
 			f.send(req);
-			System.out.println("Node[" + this.getId() + "]: Ring created.");
+			System.out.println("Node[" + id + "]: Ring created.");
 			System.out.println(this.toString());
 		}
 		else
@@ -112,7 +112,7 @@ public class Node implements Runnable, Serializable{
 		return node_address;
 	}
 
-	public Hashtable<Integer, File> getFileList() {
+	public synchronized Hashtable<Integer, File> getFileList() {
 		return fileList;
 	}
 
@@ -123,7 +123,7 @@ public class Node implements Runnable, Serializable{
 		//node is liable of file
 		if(k == this.getId()) {
 			fileList.put(k, file);
-			
+
 			ch = new ClientHandler();
 			//node send a copy of file to his successor as backup
 			ch.saveReplica(succ, file, k);
@@ -131,9 +131,13 @@ public class Node implements Runnable, Serializable{
 			System.out.println(this.toString() + ": Filelist " + this.getFileList().toString());
 		}
 		else 
-			new ClientHandler().addFileReq(k);
+			new ClientHandler().addFileReq(succ, k, this);
 	}
 
+	/**
+	 * once target node is found it can be saved in his list
+	 * @param node = target node for saving file
+	 */
 	public void saveFile(Node node) {
 		ch = new ClientHandler();
 		ch.addFile(node, file, k);
@@ -159,7 +163,7 @@ public class Node implements Runnable, Serializable{
 		}
 	}
 
-	public HashSet<InetSocketAddress> getSet() {
+	public synchronized HashSet<InetSocketAddress> getSet() {
 		return set;
 	}
 
@@ -167,19 +171,19 @@ public class Node implements Runnable, Serializable{
 		return id;
 	}
 
-	public Node getSucc() {
+	public synchronized Node getSucc() {
 		return succ;
 	}
 
-	public void setSucc(Node succ) {
+	public synchronized void setSucc(Node succ) {
 		this.succ = succ;
 	}
 
-	public Node getPred() {
+	public synchronized Node getPred() {
 		return pred;
 	}
 
-	public void setPred(Node pred) {
+	public synchronized void setPred(Node pred) {
 		this.pred = pred;
 	}
 
@@ -197,7 +201,7 @@ public class Node implements Runnable, Serializable{
 		System.out.println("Enter node port JoinServer address (address:p) or leave blank to default");
 		String input = scanner.next();
 		String addr[] = input.split(":");
-		
+
 		Node n;
 		try {
 			n = new Node(node_port, InetSocketAddress.createUnresolved(addr[0], Integer.parseInt(addr[1])));
@@ -206,7 +210,7 @@ public class Node implements Runnable, Serializable{
 			scanner.close();
 			return ;
 		}
-		
+
 		new Thread(n, "Node[" + n.getId() + "]").start();
 		while(choice != 4) {
 			System.out.println("Choose operation");
@@ -223,7 +227,12 @@ public class Node implements Runnable, Serializable{
 				n.create();
 				break;
 			case 2:
-				System.out.println("Enter node");
+				int i = 1;
+				for(InetSocketAddress isa : n.getSet()) {
+					System.out.println(i + ". " + isa.toString());
+					i++;
+				}
+				System.out.println("Enter node index");
 				int node = scanner.nextInt();
 				n.joinRing(node);
 				break;
@@ -250,8 +259,9 @@ public class Node implements Runnable, Serializable{
 			return "Node[addr="+ node_address + ", ID=" + id + ", SuccID=" + succ.getId() + ", PredID=null]";
 		else if(pred == null && succ == null)
 			return "Node[addr="+ node_address + ", ID=" + id + ", SuccID=null , PredID=null]"; 
-		else
+		else if(getPred() != null)
 			return "Node[addr="+ node_address + ", ID=" + id + ", SuccID=" + succ.getId() + ", PredID=" + pred.getId() + "]"; 
+		else return "Node[addr="+ node_address + ", ID="+ id + ", SuccID=" + succ.getId() + ", PredID=null";
 	}
 
 	public boolean isOnline() {
@@ -260,8 +270,8 @@ public class Node implements Runnable, Serializable{
 
 	public void setOffline() {
 		System.out.println(this.toString() + " goes offline...");
-		this.online = false;
-		this.stab = false;
+		online = false;
+		stab = false;
 	}
 
 	public void setStabilization(boolean stab) {
@@ -272,12 +282,13 @@ public class Node implements Runnable, Serializable{
 		return stab;
 	}
 
-	public synchronized void saveReplica(int k2, File file2) {
-		this.getReplica().put(k2, file2);
+	public synchronized void saveReplicaFile(int k2, File file2) {
+		replica.put(k2, file2);
 	}
 
-	public synchronized void Reassignment(Hashtable<Integer, File> fileList2) {
-		this.getFileList().putAll(fileList2);
+	public synchronized void reassignment(Hashtable<Integer, File> fileList2) {
+		fileList.putAll(fileList2);
+		System.out.println(fileList);
 	}
 
 	public Node getSucc2() {
@@ -286,6 +297,10 @@ public class Node implements Runnable, Serializable{
 
 	public void setSucc2(Node succ2) {
 		this.succ2 = succ2;
+	}
+
+	public synchronized void saveReplicaList(Hashtable<Integer, File> replicaList) {
+		replica.putAll(replicaList);
 	}
 
 }

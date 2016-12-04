@@ -3,14 +3,12 @@ package node;
 import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.Hashtable;
 import java.util.Random;
 
 class ServerHandler implements Runnable {
 
-	private ObjectOutputStream out = null;
 	private ObjectInputStream in = null;
 	private static Node n;
 	public int m;
@@ -18,16 +16,8 @@ class ServerHandler implements Runnable {
 
 	public ServerHandler(Socket client, Node n, int m) throws IOException {
 		in = new ObjectInputStream(client.getInputStream());
-		this.n = n;
+		ServerHandler.n = n;
 		this.m = m;
-	}
-
-	public ServerHandler() {
-
-	}
-
-	public ServerHandler(Node n) throws IOException {
-		this.n = n;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -41,15 +31,15 @@ class ServerHandler implements Runnable {
 			//node receive an add file request. It can accept or forward request on ring
 			case Request.addFile_REQ:
 				int k = request.getK();
-				
+
 				//file is under responsability of this node. So it send back his identity to sender node
 				if(k == n.getId())	
 					new Forwarder().send(new Request(request.getNode().getAddress(), Request.addFile_RES, n));
-				
+
 				//file is under responsability of current node's successor
 				else if(k == n.getSucc().getId() || successor(n.getSucc().getId(), n.getId(), k))	
 					new Forwarder().send(new Request(request.getNode().getAddress(), Request.addFile_RES, n.getSucc()));
-				
+
 				//request is forwording
 				else	
 					new Forwarder().send(new Request(n.getSucc().getAddress(), Request.addFile_REQ, k, request.getNode()));
@@ -63,7 +53,7 @@ class ServerHandler implements Runnable {
 			case Request.addFile:
 				int key = request.getK();
 				n.getFileList().put(key, request.getFile());
-				new Forwarder().send(new Request(n.getSucc().getAddress(), Request.replica, key, request.getFile()));
+				new Forwarder().send(new Request(n.getSucc().getAddress(), Request.replicaFile, key, request.getFile()));
 				System.out.println(n.toString() + ": save file " + request.getFile().getName() + " with key " + key);
 				System.out.println(n.toString() + ": Filelist " + n.getFileList().toString());
 				break;
@@ -115,33 +105,45 @@ class ServerHandler implements Runnable {
 				notifySuccessor();
 				break;
 
-				//node receive a notify message
+				//node receive a notify message. It become aware that a new node just entered right behind him
 			case Request.notify:
 				x = request.getNode();
-				if(n.getPred() == null)
-					n.setPred(n);
-				if(n.getId() != x.getId() && (n.getPred().getId() == n.getId() || predecessor(n.getPred().getId(), x.getId(), n.getId()))) {
+				if(n.getPred() == null || (n.getPred().getId() == n.getId() || predecessor(n.getPred().getId(), x.getId(), n.getId()))) {
+
 					if(!n.getFileList().isEmpty()){
 						Hashtable<Integer, File> copy = (Hashtable<Integer, File>) n.getFileList().clone();
 						Hashtable<Integer, File> reassign = new Hashtable<>();
-						for(int key2 : copy.keySet()) 
-							if(predecessor(n.getPred().getId(), key2, x.getId()))
+						for(int key2 : copy.keySet()) {
+							if(x.getPred() == null && successor(x.getId(), n.getId(), key2))
 								reassign.put(key2, copy.get(key2));
+							else if(n.getPred() != null && (key2 == x.getId()  || predecessor(n.getPred().getId(), key2, x.getId())))
+								reassign.put(key2, copy.get(key2));
+							n.getFileList().remove(key2);
+						}
 						new Forwarder().send(new Request(x.getAddress(), Request.reassign, reassign));
+						System.out.println(n.toString() + ": Filelist " + n.getFileList());
 					}
 					n.setPred(x);
-
 					System.out.println(n.toString() + ": Predecessor updated, now it's " + n.getPred().getId());
 				}
 				break;
 
 				//node receive file from his predecessor then save it to his replica list
-			case Request.replica:
-				n.saveReplica(request.getK(), request.getFile());
+			case Request.replicaFile:
+				n.saveReplicaFile(request.getK(), request.getFile());
+				break;
+
+				//node receive file LIST from his predecessor then save it to his replica list
+			case Request.replicaList:
+				n.saveReplicaList(request.getFileList());
+				break;
+
+			case Request.replica_REQ:
+				new Forwarder().send(new Request(n.getAddress(), Request.replicaList, n.getFileList()));
 				break;
 
 			case Request.reassign:
-				n.Reassignment(request.getFileList());
+				n.reassignment(request.getFileList());
 				break;
 
 			case Request.check_alive:
@@ -157,12 +159,12 @@ class ServerHandler implements Runnable {
 		} 
 	}
 
-	
+
 	/**
 	 * node notify his successor that it's right behind him
 	 */
 	private void notifySuccessor() {
-		if(n.isOnline()) {
+		if(n.isOnline() && n.getId() != n.getSucc().getId()) {
 			Forwarder f = new Forwarder();
 			Request req = new Request(n.getSucc().getAddress(), Request.notify, n);
 			try {
@@ -177,6 +179,8 @@ class ServerHandler implements Runnable {
 	 * Called periodically. n asks the successor
 	 * about its predecessor, verifies if n's immediate
 	 * successor is consistent, and tells the successor about n
+	 * when in while loop function dedicates thread to stabilize routine
+	 * 
 	 * 
 	 * @param node
 	 */
@@ -214,9 +218,15 @@ class ServerHandler implements Runnable {
 		if(n.isOnline() && n.getPred() != null)
 			req = new Request(n.getPred().getAddress(), Request.check_alive, n);
 		Forwarder f = new Forwarder();
-		if(!f.sendCheck(req)) {
+		try {
+			f.sendCheck(req);
+		} catch (IOException e) {
+			//predecessor has failed!
 			System.err.println(n.getPred().toString() + " HAS FAILED.");
-			//TODO recover file procedure
+			n.getFileList().putAll(n.getReplica());
+			System.out.println(n.toString() + "file list recovered" + n.getFileList());
+			n.getReplica().clear();
+
 			n.setPred(null);
 		}
 	}

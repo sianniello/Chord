@@ -55,6 +55,10 @@ public class ClientHandler implements Serializable{
 		System.out.println("Node[" + node.getPort() + "] - Network: " + node.getSet().toString());
 	}
 
+	/**
+	 * node join a ring. If coupling node is invalid it tries to join with a randomly chosen node from his set
+	 * @param n = coupling node
+	 */
 	public void joinRequest(int n) {
 		InetSocketAddress address = null;
 		if(n > 0 && n < node.getSet().size()) 
@@ -80,9 +84,14 @@ public class ClientHandler implements Serializable{
 		}
 	}
 
-	public void addFileReq(int k) {
+	/**
+	 * node send a request for k-corresponding node target for file saving
+	 * @param succ 
+	 * @param k = hashing key of file
+	 */
+	public void addFileReq(Node succ, int k, Node n) {
 		Forwarder f = new Forwarder();
-		Request request = new Request(node.getSucc().getAddress(), Request.addFile_REQ, k, node);
+		Request request = new Request(succ.getAddress(), Request.addFile_REQ, k, n);
 		try {
 			f.send(request);
 		} catch (IOException e) {
@@ -90,6 +99,12 @@ public class ClientHandler implements Serializable{
 		}
 	}
 
+	/**
+	 * node send file to save to currect k-corresponding node
+	 * @param node = target node
+	 * @param file = file to save
+	 * @param k = hashing key of file
+	 */
 	public void addFile(Node node, File file, int k) {
 		Forwarder f = new Forwarder();
 		Request req = new Request(node.getAddress(), Request.addFile, k, file);
@@ -100,9 +115,15 @@ public class ClientHandler implements Serializable{
 		}
 	}
 
+	/**
+	 * when a file is saved in node it send a copy of file to his successor
+	 * @param succ = successor of current node
+	 * @param file = file to replicate
+	 * @param k	= hashing key of file
+	 */
 	public void saveReplica(Node succ, File file, int k) {
 		try {
-			new Forwarder().send(new Request(succ.getAddress(), Request.replica, k, file));
+			new Forwarder().send(new Request(succ.getAddress(), Request.replicaFile, k, file));
 		} catch (IOException e) {
 			System.err.println("Fail to send replica to successor.");
 		}
