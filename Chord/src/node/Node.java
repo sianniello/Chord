@@ -1,6 +1,8 @@
 package node;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.net.InetAddress;
@@ -9,11 +11,23 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.nio.charset.Charset;
+import java.security.InvalidKeyException;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.Security;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Scanner;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+
+import javax.crypto.Cipher;
+import javax.crypto.CipherInputStream;
+import javax.crypto.CipherOutputStream;
+import javax.crypto.NoSuchPaddingException;
 
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
@@ -41,6 +55,8 @@ public class Node implements Runnable, Serializable{
 	private File file;
 	private boolean online, stab;
 	private int k;
+	private PrivateKey pvtKey;
+	private PublicKey pubKey;
 	@SuppressWarnings({ "javadoc", "unqualified-field-access" })
 	public Node(int port) throws IOException, ClassNotFoundException {
 		this.node_address = new InetSocketAddress(InetAddress.getLocalHost(), port);
@@ -122,12 +138,13 @@ public class Node implements Runnable, Serializable{
 
 		//node is liable of file
 		if(k == this.getId()) {
+
 			fileList.put(k, file);
 
 			ch = new ClientHandler();
 			//node send a copy of file to his successor as backup
 			ch.saveReplica(succ, file, k);
-			System.out.println(this.toString() + ": save file " + file.getName() + " with key " + k);
+			System.out.println(this.toString() + ": save file " + file.getName() + ", dimension " + file.length() + "bytes, with key " + k);
 			System.out.println(this.toString() + ": Filelist " + this.getFileList().toString());
 		}
 		else 

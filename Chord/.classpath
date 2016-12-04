@@ -2,7 +2,9 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/lib"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
+	<classpathentry kind="lib" path="C:/Users/Stefano/git/Chord/Chord/FlexiCoreProvider-1.7p7.signed.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Stefano/git/Chord/Chord/guava-20.0.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Stefano/git/Chord/Chord/CoDec-build17-jdk13.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

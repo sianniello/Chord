@@ -3,11 +3,7 @@ package node;
 import java.io.File;
 import java.io.Serializable;
 import java.net.InetSocketAddress;
-import java.util.HashSet;
 import java.util.Hashtable;
-import java.util.Map;
-
-import randomFile.RandomFile;
 
 @SuppressWarnings("serial")
 public class Request implements Serializable{
@@ -32,7 +28,7 @@ public class Request implements Serializable{
 	private int request;	//request type
 	private Node node;	//source node
 	private File file;
-	private int k;
+	private int k;	//key of file
 	private Hashtable<Integer, File> fileList;
 
 	public Request(InetSocketAddress address) {
