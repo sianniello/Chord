@@ -38,16 +38,24 @@ class ServerHandler implements Runnable {
 
 			switch(request.getRequest()) {
 
+			//node receive an add file request. It can accept or forward request on ring
 			case Request.addFile_REQ:
 				int k = request.getK();
-				if(k == n.getId())
+				
+				//file is under responsability of this node. So it send back his identity to sender node
+				if(k == n.getId())	
 					new Forwarder().send(new Request(request.getNode().getAddress(), Request.addFile_RES, n));
-				else if(k == n.getSucc().getId() || successor(n.getSucc().getId(), n.getId(), k))
+				
+				//file is under responsability of current node's successor
+				else if(k == n.getSucc().getId() || successor(n.getSucc().getId(), n.getId(), k))	
 					new Forwarder().send(new Request(request.getNode().getAddress(), Request.addFile_RES, n.getSucc()));
-				else
+				
+				//request is forwording
+				else	
 					new Forwarder().send(new Request(n.getSucc().getAddress(), Request.addFile_REQ, k, request.getNode()));
 				break;
 
+				//node receives liable node of file saving
 			case Request.addFile_RES:
 				n.saveFile(request.getNode());
 				break;
@@ -55,6 +63,7 @@ class ServerHandler implements Runnable {
 			case Request.addFile:
 				int key = request.getK();
 				n.getFileList().put(key, request.getFile());
+				new Forwarder().send(new Request(n.getSucc().getAddress(), Request.replica, key, request.getFile()));
 				System.out.println(n.toString() + ": save file " + request.getFile().getName() + " with key " + key);
 				System.out.println(n.toString() + ": Filelist " + n.getFileList().toString());
 				break;
@@ -82,6 +91,7 @@ class ServerHandler implements Runnable {
 				}
 				break;
 
+				//start stabilization signal received
 			case Request.start_stabilize:
 				stabilize(n);
 				break;
@@ -125,6 +135,7 @@ class ServerHandler implements Runnable {
 				}
 				break;
 
+				//node receive file from his predecessor then save it to his replica list
 			case Request.replica:
 				n.saveReplica(request.getK(), request.getFile());
 				break;
@@ -146,6 +157,10 @@ class ServerHandler implements Runnable {
 		} 
 	}
 
+	
+	/**
+	 * node notify his successor that it's right behind him
+	 */
 	private void notifySuccessor() {
 		if(n.isOnline()) {
 			Forwarder f = new Forwarder();
@@ -191,7 +206,7 @@ class ServerHandler implements Runnable {
 	}
 
 	/**
-	 * This function verify in node is online. Predecessor node in particular
+	 * called periodically. checks whether predecessor has failed.
 	 * @param node
 	 */
 	public void check_predecessor(Node node) {

@@ -5,10 +5,8 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.UnknownHostException;
 import java.util.HashSet;
 import java.util.Random;
 
@@ -16,10 +14,11 @@ import java.util.Random;
 public class ClientHandler implements Serializable{
 
 	private Node node;
-	private InetAddress joinServer;
-
 	public ClientHandler(Node node) {
 		this.node = node;
+	}
+
+	public ClientHandler() {
 	}
 
 	/**
@@ -98,6 +97,14 @@ public class ClientHandler implements Serializable{
 			f.send(req);
 		} catch (IOException e) {
 			e.printStackTrace();
+		}
+	}
+
+	public void saveReplica(Node succ, File file, int k) {
+		try {
+			new Forwarder().send(new Request(succ.getAddress(), Request.replica, k, file));
+		} catch (IOException e) {
+			System.err.println("Fail to send replica to successor.");
 		}
 	}
 	

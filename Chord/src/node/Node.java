@@ -18,7 +18,6 @@ import java.util.concurrent.Executors;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 import com.google.common.io.Files;
-
 import randomFile.RandomFile;
 
 /**
@@ -121,18 +120,22 @@ public class Node implements Runnable, Serializable{
 		file = new RandomFile().getFile();
 		k = Math.abs(hf.hashBytes(Files.toByteArray(file)).asInt())%m;
 
+		//node is liable of file
 		if(k == this.getId()) {
 			fileList.put(k, file);
-			new Forwarder().send(new Request(succ.getAddress(), Request.replica, k, file));
+			
+			ch = new ClientHandler();
+			//node send a copy of file to his successor as backup
+			ch.saveReplica(succ, file, k);
 			System.out.println(this.toString() + ": save file " + file.getName() + " with key " + k);
 			System.out.println(this.toString() + ": Filelist " + this.getFileList().toString());
 		}
 		else 
-			new ClientHandler(this).addFileReq(k);
+			new ClientHandler().addFileReq(k);
 	}
 
 	public void saveFile(Node node) {
-		ch = new ClientHandler(this);
+		ch = new ClientHandler();
 		ch.addFile(node, file, k);
 	}
 
@@ -182,10 +185,6 @@ public class Node implements Runnable, Serializable{
 
 	public File getFile() {
 		return file;
-	}
-
-	public void setFile(File f) {
-		this.file = f;
 	}
 
 	public static void main(String[] args) throws IOException {
@@ -246,10 +245,6 @@ public class Node implements Runnable, Serializable{
 		ch.joinRequest(node);
 	}
 
-	public void setId(int id) {
-		this.id = id;
-	}
-
 	public String toString() {
 		if(pred == null && succ != null)
 			return "Node[addr="+ node_address + ", ID=" + id + ", SuccID=" + succ.getId() + ", PredID=null]";
@@ -277,11 +272,11 @@ public class Node implements Runnable, Serializable{
 		return stab;
 	}
 
-	public void saveReplica(int k2, File file2) {
+	public synchronized void saveReplica(int k2, File file2) {
 		this.getReplica().put(k2, file2);
 	}
 
-	public void Reassignment(Hashtable<Integer, File> fileList2) {
+	public synchronized void Reassignment(Hashtable<Integer, File> fileList2) {
 		this.getFileList().putAll(fileList2);
 	}
 
