@@ -20,6 +20,9 @@ class ServerHandler implements Runnable {
 		this.m = m;
 	}
 
+	/* (non-Javadoc)
+	 * @see java.lang.Runnable#run()
+	 */
 	@SuppressWarnings("unchecked")
 	@Override
 	public void run() {
@@ -58,8 +61,14 @@ class ServerHandler implements Runnable {
 				System.out.println(n.toString() + ": Filelist " + n.getFileList().toString());
 				break;
 
-				//a new node request join to a ring's node. It send back successor of new node
+				//a new node requests join to a ring's node. It send back successor of new node
 			case Request.join_REQ:
+				//node receives a join request but it has not joined any ring yet
+				if(n.getSucc() == null) {
+					System.err.println("No ring running");
+					break;
+				}
+
 				System.out.println(n.toString() + ": received a join request from Node[" + request.getNode().getAddress() + "]");
 				if(request.getNode().getId() == n.getSucc().getId() || successor(n.getSucc().getId(), n.getId(), request.getNode().getId()))
 					new Forwarder().send(new Request(request.getNode().getAddress(), Request.join_RES, n.getSucc()));
@@ -105,7 +114,7 @@ class ServerHandler implements Runnable {
 				notifySuccessor();
 				break;
 
-				//node receive a notify message. It become aware that a new node just entered right behind him
+				//node receive a notify message from x. It become aware that a new node just entered right behind him
 			case Request.notify:
 				x = request.getNode();
 				if(n.getPred() == null || (n.getPred().getId() == n.getId() || predecessor(n.getPred().getId(), x.getId(), n.getId()))) {
@@ -114,11 +123,14 @@ class ServerHandler implements Runnable {
 						Hashtable<Integer, File> copy = (Hashtable<Integer, File>) n.getFileList().clone();
 						Hashtable<Integer, File> reassign = new Hashtable<>();
 						for(int key2 : copy.keySet()) {
-							if(x.getPred() == null && successor(x.getId(), n.getId(), key2))
+							if(x.getPred() == null && successor(x.getId(), n.getId(), key2)) {
 								reassign.put(key2, copy.get(key2));
-							else if(n.getPred() != null && (key2 == x.getId()  || predecessor(n.getPred().getId(), key2, x.getId())))
+								n.getFileList().remove(key2);
+							}
+							else if(n.getPred() != null && (key2 == x.getId()  || predecessor(n.getPred().getId(), key2, x.getId()))) {
 								reassign.put(key2, copy.get(key2));
-							n.getFileList().remove(key2);
+								n.getFileList().remove(key2);
+							}
 						}
 						new Forwarder().send(new Request(x.getAddress(), Request.reassign, reassign));
 						System.out.println(n.toString() + ": Filelist " + n.getFileList());
@@ -197,9 +209,9 @@ class ServerHandler implements Runnable {
 				}
 
 				if(node.getPred() != null)
-					check_predecessor(node);
+					check_predecessor();
 
-				System.out.println(node.toString() + ": stabilization routine...");
+				//System.out.println(node.toString() + ": stabilization routine...");
 				try {
 					Thread.sleep(new Random().nextInt(5000) + 2000);
 				} catch (InterruptedException e) {
@@ -213,7 +225,7 @@ class ServerHandler implements Runnable {
 	 * called periodically. checks whether predecessor has failed.
 	 * @param node
 	 */
-	public void check_predecessor(Node node) {
+	public void check_predecessor() {
 		Request req = null;
 		if(n.isOnline() && n.getPred() != null)
 			req = new Request(n.getPred().getAddress(), Request.check_alive, n);
@@ -223,11 +235,10 @@ class ServerHandler implements Runnable {
 		} catch (IOException e) {
 			//predecessor has failed!
 			System.err.println(n.getPred().toString() + " HAS FAILED.");
-			n.getFileList().putAll(n.getReplica());
-			System.out.println(n.toString() + "file list recovered" + n.getFileList());
-			n.getReplica().clear();
-
 			n.setPred(null);
+			n.getFileList().putAll(n.getReplica());
+			System.out.println(n.toString() + " File list recovered: " + n.getFileList());
+			n.getReplica().clear();
 		}
 	}
 
