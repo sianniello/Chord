@@ -111,6 +111,7 @@ class ServerHandler implements Runnable {
 				if(x != null && successor(n.getSucc().getId(), n.getId(), x.getId())) {
 					n.setSucc(x);
 					System.out.println(n.toString() + ": Successor updated, now it's " + n.getSucc().getId());
+					new Forwarder().send(new Request(n.getSucc().getAddress(), Request.replicaList, n.getFileList()));
 					if(n.getPred() != null)
 						new Forwarder().send(new Request(n.getPred().getAddress(), Request.succ2Update, n.getSucc()));
 				}
@@ -139,6 +140,7 @@ class ServerHandler implements Runnable {
 						System.out.println(n.toString() + ": Filelist " + n.getFileList());
 					}
 					n.setPred(x);
+					n.getReplica().clear();
 					System.out.println(n.toString() + ": Predecessor updated, now it's " + n.getPred().getId());
 				}
 				break;
@@ -151,10 +153,6 @@ class ServerHandler implements Runnable {
 				//node receive file LIST from his predecessor then save it to his replica list
 			case Request.replicaList:
 				n.saveReplicaList(request.getFileList());
-				break;
-
-			case Request.replica_REQ:
-				new Forwarder().send(new Request(n.getAddress(), Request.replicaList, n.getFileList()));
 				break;
 
 			case Request.reassign:
