@@ -3,6 +3,7 @@ package node;
 import java.io.File;
 import java.io.Serializable;
 import java.net.InetSocketAddress;
+import java.security.PublicKey;
 import java.util.Hashtable;
 
 @SuppressWarnings("serial")
@@ -105,5 +106,10 @@ public class Request implements Serializable{
 
 	public Hashtable<Integer, File> getFileList() {
 		return fileList;
+	}
+
+	public PublicKey getPubKey() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }
