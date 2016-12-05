@@ -22,6 +22,8 @@ public class Request implements Serializable{
 	public static final int reassign = 11;
 	public static final int replica_REQ = 12;
 	public static final int replicaList = 13;
+	public static final int pubKey_REQ = 14;
+	public static final int pubKey_RES = 15;
 
 
 	private InetSocketAddress address;	//destination address
@@ -62,6 +64,11 @@ public class Request implements Serializable{
 	public Request(InetSocketAddress address, int request, Hashtable<Integer, File> fileList) {
 		this(address, request);
 		this.fileList = fileList;
+	}
+
+	//change key request
+	public Request(InetSocketAddress address2, int pubkeyRes, String pubKey) {
+		// TODO Auto-generated constructor stub
 	}
 
 	public InetSocketAddress getAddress() {
