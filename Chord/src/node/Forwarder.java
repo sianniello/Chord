@@ -24,7 +24,7 @@ public class Forwarder {
 	 * @throws IOException
 	 */
 	@SuppressWarnings({ "unqualified-field-access" })
-	public void send(Request request) throws UnknownHostException, IOException {
+	public synchronized void send(Request request) throws UnknownHostException, IOException {
 		client = new Socket(request.getAddress().getHostName(), request.getAddress().getPort());
 		client.setSoTimeout(1000);
 		out = new ObjectOutputStream(client.getOutputStream());
@@ -32,14 +32,14 @@ public class Forwarder {
 		client.close();
 	}
 
-	public void send(Request request, Node node) throws UnknownHostException, IOException {
+	public synchronized void send(Request request, Node node) throws UnknownHostException, IOException {
 		client = new Socket(request.getAddress().getHostName(), request.getAddress().getPort());
 		out = new ObjectOutputStream(client.getOutputStream());
 		out.writeObject(request);
 		client.close();
 	}
 
-	public void sendCheck(Request request) throws UnknownHostException, IOException {
+	public synchronized void sendCheck(Request request) throws UnknownHostException, IOException {
 		client = new Socket(request.getAddress().getHostName(), request.getAddress().getPort());
 		client.setSoTimeout(1000);
 		out = new ObjectOutputStream(client.getOutputStream());

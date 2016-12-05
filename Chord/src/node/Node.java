@@ -19,8 +19,6 @@ import java.util.concurrent.Executors;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 import com.google.common.io.Files;
-import com.sun.swing.internal.plaf.synth.resources.synth;
-
 import cryptografy.Cryptography;
 import randomFile.RandomFile;
 
@@ -30,9 +28,12 @@ import randomFile.RandomFile;
  * @author Stefano.
  *         Created 23 nov 2016.
  */
-@SuppressWarnings("serial")
 public class Node implements Runnable, Serializable{
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private Node succ, succ2, pred;
 	private final static int m = 10;		//keys/ID space
 	private int id;
@@ -172,7 +173,7 @@ public class Node implements Runnable, Serializable{
 		return set;
 	}
 
-	public int getId() {
+	public synchronized int getId() {
 		return id;
 	}
 
@@ -235,7 +236,7 @@ public class Node implements Runnable, Serializable{
 				int i = 1;
 				System.out.println("\n***Online nodes***");
 				for(InetSocketAddress isa : n.getSet()) {
-					if(isa.getAddress() != n.getAddress().getAddress())
+					if(isa.getPort() != n.getPort())
 						System.out.println(i + ". " + isa.toString());
 					i++;
 				}
@@ -284,7 +285,7 @@ public class Node implements Runnable, Serializable{
 		else return "Node[addr="+ node_address + ", ID="+ id + ", SuccID=" + succ.getId() + ", PredID=null";
 	}
 
-	public boolean isOnline() {
+	public synchronized boolean isOnline() {
 		return online;
 	}
 
