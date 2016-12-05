@@ -6,9 +6,15 @@ import java.net.InetSocketAddress;
 import java.security.PublicKey;
 import java.util.Hashtable;
 
-@SuppressWarnings("serial")
 public class Request implements Serializable{
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 5171533117037989185L;
+	/**
+	 * 
+	 */
 	public static final int addFile_REQ = 1;
 	public static final int addFile_RES = 2;
 	public static final int addFile = 3;
@@ -20,7 +26,7 @@ public class Request implements Serializable{
 	public static final int notify = 9;
 	public static final int check_alive = 0;
 	public static final int replicaFile = 10;
-	public static final int reassign = 11;
+	public static final int reassign_file = 11;
 	public static final int replicaList = 13;
 	public static final int pubKey_REQ = 14;
 	public static final int pubKey_RES = 15;
@@ -77,23 +83,23 @@ public class Request implements Serializable{
 		// TODO Auto-generated constructor stub
 	}
 
-	public InetSocketAddress getAddress() {
+	public synchronized InetSocketAddress getAddress() {
 		return address;
 	}
 	public void setAddress(InetSocketAddress address) {
 		this.address = address;
 	}
-	public int getRequest() {
+	public synchronized int getRequest() {
 		return request;
 	}
 	public void setRequest(int request) {
 		this.request = request;
 	}
-	public Node getNode() {
+	public synchronized Node getNode() {
 		return node;
 	}
 
-	public File getFile() {
+	public synchronized File getFile() {
 		return file;
 	}
 
@@ -109,7 +115,7 @@ public class Request implements Serializable{
 		this.k = k;
 	}
 
-	public Hashtable<Integer, File> getFileList() {
+	public synchronized Hashtable<Integer, File> getFileList() {
 		return fileList;
 	}
 
