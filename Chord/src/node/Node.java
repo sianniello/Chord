@@ -235,7 +235,7 @@ public class Node implements Runnable, Serializable{
 				int i = 1;
 				System.out.println("\n***Online nodes***");
 				for(InetSocketAddress isa : n.getSet()) {
-					if(isa.getPort() != n.getPort())
+					if(isa.getAddress() != n.getAddress().getAddress())
 						System.out.println(i + ". " + isa.toString());
 					i++;
 				}

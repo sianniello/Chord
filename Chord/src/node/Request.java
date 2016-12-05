@@ -21,7 +21,6 @@ public class Request implements Serializable{
 	public static final int check_alive = 0;
 	public static final int replicaFile = 10;
 	public static final int reassign = 11;
-	public static final int replica_REQ = 12;
 	public static final int replicaList = 13;
 	public static final int pubKey_REQ = 14;
 	public static final int pubKey_RES = 15;
