@@ -3,6 +3,7 @@ package joinserver;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.Inet4Address;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -24,7 +25,7 @@ public class JoinServer {
 		server = new ServerSocket(port);
 		set = new HashSet<>();
 
-		System.out.println("Server listening at: " + port);
+		System.out.println("Server listening at: " + Inet4Address.getLoopbackAddress() + ":" +port);
 	}
 
 	public void execute() throws IOException{

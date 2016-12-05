@@ -33,7 +33,7 @@ public class ClientHandler implements Serializable{
 		ObjectInputStream in = null;
 		String join_server;
 		int join_server_port;
-		
+
 		if(joinServer == null) {
 			join_server = "localhost";
 			join_server_port = 1099;
@@ -123,14 +123,12 @@ public class ClientHandler implements Serializable{
 	 * @param file = file to replicate
 	 * @param k	= hashing key of file
 	 */
-	public void saveReplica(Node succ, File file, int k, Node n) {
-		Cryptography crypt = new Cryptography();
-		crypt.pubKeyReq(succ, n);
+	public void saveReplica(Node succ, File file, int k) {
 		try {
 			new Forwarder().send(new Request(succ.getAddress(), Request.replicaFile, k, file));
 		} catch (IOException e) {
 			System.err.println("Fail to send replica to successor.");
 		}
 	}
-	
+
 }

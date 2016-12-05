@@ -56,7 +56,8 @@ class ServerHandler implements Runnable {
 			case Request.addFile:
 				int key = request.getK();
 				n.getFileList().put(key, request.getFile());
-				new Forwarder().send(new Request(n.getSucc().getAddress(), Request.replicaFile, key, request.getFile()));
+				if(n.getSucc() != null && n.getId() != n.getSucc().getId())
+					new Forwarder().send(new Request(n.getSucc().getAddress(), Request.replicaFile, key, request.getFile()));
 				System.out.println(n.toString() + ": save file " + request.getFile().getName() + " with key " + key);
 				System.out.println(n.toString() + ": Filelist " + n.getFileList().toString());
 				break;
@@ -110,6 +111,8 @@ class ServerHandler implements Runnable {
 				if(x != null && successor(n.getSucc().getId(), n.getId(), x.getId())) {
 					n.setSucc(x);
 					System.out.println(n.toString() + ": Successor updated, now it's " + n.getSucc().getId());
+					if(n.getPred() != null)
+						new Forwarder().send(new Request(n.getPred().getAddress(), Request.succ2Update, n.getSucc()));
 				}
 				notifySuccessor();
 				break;
@@ -165,9 +168,13 @@ class ServerHandler implements Runnable {
 			case Request.pubKey_REQ:
 				new Forwarder().send(new Request(request.getAddress(), Request.pubKey_RES, n.getPubKey()));
 				break;
-				
+
 			case Request.pubKey_RES:
 				n.setPubKeyTarget(request.getPubKey());
+				break;
+
+			case Request.succ2Update:
+				n.setSucc2(request.getNode());
 				break;
 
 			default:
@@ -213,7 +220,11 @@ class ServerHandler implements Runnable {
 				try {
 					f.send(req);
 				} catch (IOException e1) {
-					//TODO successor failed
+					if(n.getSucc2() != null) {
+						System.err.println(n.toString() + ": Successor has FAILED.");
+						n.setSucc(n.getSucc2());
+						System.out.println(n.toString() + ": new successor is " + n.getSucc().getId());
+					}
 				}
 
 				if(node.getPred() != null)
