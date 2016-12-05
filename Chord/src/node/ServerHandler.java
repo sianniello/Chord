@@ -162,6 +162,14 @@ class ServerHandler implements Runnable {
 				//dummy request
 				break;
 
+			case Request.pubKey_REQ:
+				new Forwarder().send(new Request(request.getAddress(), Request.pubKey_RES, n.getPubKey()));
+				break;
+				
+			case Request.pubKey_RES:
+				n.setPubKeyTarget(request.getPubKey());
+				break;
+
 			default:
 				break;
 			}

@@ -10,6 +10,8 @@ import java.net.Socket;
 import java.util.HashSet;
 import java.util.Random;
 
+import cryptografy.Cryptography;
+
 @SuppressWarnings("serial")
 public class ClientHandler implements Serializable{
 
@@ -121,7 +123,9 @@ public class ClientHandler implements Serializable{
 	 * @param file = file to replicate
 	 * @param k	= hashing key of file
 	 */
-	public void saveReplica(Node succ, File file, int k) {
+	public void saveReplica(Node succ, File file, int k, Node n) {
+		Cryptography crypt = new Cryptography();
+		crypt.pubKeyReq(succ, n);
 		try {
 			new Forwarder().send(new Request(succ.getAddress(), Request.replicaFile, k, file));
 		} catch (IOException e) {

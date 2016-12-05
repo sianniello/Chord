@@ -17,11 +17,16 @@ import javax.crypto.CipherOutputStream;
 import javax.crypto.NoSuchPaddingException;
 
 import de.flexiprovider.core.FlexiCoreProvider;
+import node.Forwarder;
+import node.Node;
+import node.Request;
 
 public class Cryptography {
 
 	private PrivateKey pvtKey;
 	private PublicKey pubKey;
+	
+	private PublicKey pubKeyTarget;
 
 	public void keyGeneration() {
 		try {
@@ -35,7 +40,7 @@ public class Cryptography {
 		}
 
 	}
-	
+
 	public File encrypt(File file) {
 		Security.addProvider(new FlexiCoreProvider());
 		File ef = new File(file.getName() + ".crypt");
@@ -79,5 +84,21 @@ public class Cryptography {
 			e.printStackTrace();
 		}
 		return df; 
+	}
+
+	public void pubKeyReq(Node succ, Node n) {
+		try {
+			new Forwarder().send(new Request(succ.getAddress(), Request.pubKey_REQ, n));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public PublicKey getPubKeyTarget() {
+		return pubKeyTarget;
+	}
+
+	public void setPubKeyTarget(PublicKey pubKeyTarget) {
+		this.pubKeyTarget = pubKeyTarget;
 	}
 }
