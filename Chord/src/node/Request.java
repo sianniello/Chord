@@ -25,6 +25,7 @@ public class Request implements Serializable{
 	public static final int replicaList = 13;
 	public static final int pubKey_REQ = 14;
 	public static final int pubKey_RES = 15;
+	public static final int succ2Update = 16;
 
 
 	private InetSocketAddress address;	//destination address
@@ -32,6 +33,7 @@ public class Request implements Serializable{
 	private Node node;	//source node
 	private File file;
 	private int k;	//key of file
+	private PublicKey pubKey;
 	private Hashtable<Integer, File> fileList;
 
 	public Request(InetSocketAddress address) {
@@ -72,6 +74,10 @@ public class Request implements Serializable{
 		// TODO Auto-generated constructor stub
 	}
 
+	public Request(InetSocketAddress address2, int pubkeyRes, PublicKey pubKey2) {
+		// TODO Auto-generated constructor stub
+	}
+
 	public InetSocketAddress getAddress() {
 		return address;
 	}
@@ -109,7 +115,6 @@ public class Request implements Serializable{
 	}
 
 	public PublicKey getPubKey() {
-		// TODO Auto-generated method stub
-		return null;
+		return pubKey;
 	}
 }

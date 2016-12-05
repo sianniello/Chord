@@ -19,6 +19,7 @@ import java.util.concurrent.Executors;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 import com.google.common.io.Files;
+import com.sun.swing.internal.plaf.synth.resources.synth;
 
 import cryptografy.Cryptography;
 import randomFile.RandomFile;
@@ -128,9 +129,9 @@ public class Node implements Runnable, Serializable{
 
 			fileList.put(k, file);
 
-			ch = new ClientHandler();
 			//node send a copy of file to his successor as backup
-			ch.saveReplica(succ, file, k, this);
+			if(succ.getId() != this.id)
+				new ClientHandler().saveReplica(succ, file, k);
 			System.out.println(this.toString() + ": save file " + file.getName() + ", dimension " + file.length() + "bytes, with key " + k);
 			System.out.println(this.toString() + ": Filelist " + this.getFileList().toString());
 		}
@@ -202,12 +203,11 @@ public class Node implements Runnable, Serializable{
 
 		System.out.println("Enter node port (range 10000-10100): ");
 		int node_port = scanner.nextInt();
-		System.out.println("Enter node port JoinServer address (address:p) or leave blank to default");
-		String input = scanner.next();
-		String addr[] = input.split(":");
+		System.out.println("Enter JoinServer port:");
+		int js_port = scanner.nextInt();
 
 		try {
-			n = new Node(node_port, InetSocketAddress.createUnresolved(addr[0], Integer.parseInt(addr[1])));
+			n = new Node(node_port, InetSocketAddress.createUnresolved("localhost", js_port));
 		} catch (NumberFormatException | ClassNotFoundException e) {
 			System.err.println("Invalid address format");
 			scanner.close();
@@ -215,14 +215,15 @@ public class Node implements Runnable, Serializable{
 		}
 
 		new Thread(n, "Node[" + n.getId() + "]").start();
-		while(choice != 5) {
+		while(choice != 6) {
 			System.out.println("Choose operation");
 			System.out.println("-------------------------\n");
 			System.out.println("1 - Create ring");
 			System.out.println("2 - Join Ring");
 			System.out.println("3 - Add a file");
 			System.out.println("4 - File list");
-			System.out.println("5 - Go offline");
+			System.out.println("5 - Replica list");
+			System.out.println("6 - Go offline");
 
 			choice = scanner.nextInt();
 			System.out.println("Your ID: " + n.getId() + "\n");
@@ -232,8 +233,9 @@ public class Node implements Runnable, Serializable{
 				break;
 			case 2:
 				int i = 1;
+				System.out.println("\n***Online nodes***");
 				for(InetSocketAddress isa : n.getSet()) {
-					if(isa.getAddress().equals(n.getAddress().getAddress()))
+					if(isa.getPort() != n.getPort())
 						System.out.println(i + ". " + isa.toString());
 					i++;
 				}
@@ -245,10 +247,14 @@ public class Node implements Runnable, Serializable{
 				n.addFile();
 				break;
 			case 4:
-				System.out.println(n.toString() + " " + n.getFileList());
+				System.out.println(n.toString() + " Filelist:" + n.getFileList());
 				scanner.hasNext();
 				break;
 			case 5:
+				System.out.println(n.toString() + " Replica:" + n.getReplica());
+				scanner.hasNext();
+				break;
+			case 6:
 				n.setOffline();
 				break;
 			default:
@@ -305,11 +311,11 @@ public class Node implements Runnable, Serializable{
 		System.out.println(fileList);
 	}
 
-	public Node getSucc2() {
+	public synchronized Node getSucc2() {
 		return succ2;
 	}
 
-	public void setSucc2(Node succ2) {
+	public synchronized void setSucc2(Node succ2) {
 		this.succ2 = succ2;
 	}
 
@@ -317,10 +323,10 @@ public class Node implements Runnable, Serializable{
 		replica.putAll(replicaList);
 	}
 
-	public String getPubKey() {
-		return new Cryptography().getPubKeyTarget().toString();
+	public PublicKey getPubKey() {
+		return new Cryptography().getPubKeyTarget();
 	}
-	
+
 	public void setPubKeyTarget(PublicKey k) {
 		new Cryptography().setPubKeyTarget(k);
 	}

@@ -10,11 +10,13 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Security;
+import java.util.Random;
 
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
 import javax.crypto.CipherOutputStream;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.SecretKeySpec;
 
 import de.flexiprovider.core.FlexiCoreProvider;
 import node.Forwarder;
@@ -23,18 +25,22 @@ import node.Request;
 
 public class Cryptography {
 
-	private PrivateKey pvtKey;
-	private PublicKey pubKey;
-	
+	private static PrivateKey pvtKey;
+	private static PublicKey pubKey;
+	private static String secretKey;
+
 	private PublicKey pubKeyTarget;
 
-	public void keyGeneration() {
+	public static void keyGeneration() {
 		try {
 			KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA", new FlexiCoreProvider());
 			kpg.initialize(1024);
 			KeyPair keyPair = kpg.generateKeyPair();
 			pvtKey = keyPair.getPrivate();
 			pubKey = keyPair.getPublic();
+			secretKey = "";
+			for(int i = 0; i <= new Random().nextInt(20) + 10; i++)
+				secretKey += (char)(new Random().nextInt(26) + 'a');
 		} catch (NoSuchAlgorithmException e) {
 			e.printStackTrace();
 		}
@@ -42,11 +48,11 @@ public class Cryptography {
 	}
 
 	public File encrypt(File file) {
-		Security.addProvider(new FlexiCoreProvider());
-		File ef = new File(file.getName() + ".crypt");
+		SecretKeySpec key = new SecretKeySpec(secretKey.getBytes(), "AES");
+		File ef = new File(file.getName().split("[.]")[0] + ".crypt");
 		try {
-			Cipher cipher = Cipher.getInstance("RSA", new FlexiCoreProvider());
-			cipher.init(Cipher.ENCRYPT_MODE, pubKey);
+			Cipher cipher = Cipher.getInstance("AES");
+			cipher.init(Cipher.ENCRYPT_MODE, key);
 
 			FileInputStream fis = new FileInputStream(file);
 			FileOutputStream fos = new FileOutputStream(ef);
@@ -65,11 +71,11 @@ public class Cryptography {
 	}
 
 	public File decrypt(File file) {
-		Security.addProvider(new FlexiCoreProvider());
+		SecretKeySpec key = new SecretKeySpec(secretKey.getBytes(), "AES");
 		File df = new File(file.getName().replaceAll(".crypt", ""));
 		try {
-			Cipher cipher = Cipher.getInstance("RSA", new FlexiCoreProvider());
-			cipher.init(Cipher.DECRYPT_MODE, pvtKey);
+			Cipher cipher = Cipher.getInstance("AES");
+			cipher.init(Cipher.DECRYPT_MODE, key);
 			FileInputStream fis = new FileInputStream(file);
 			CipherInputStream cis = new CipherInputStream(fis, cipher);
 			FileOutputStream fos = new FileOutputStream(df);
@@ -94,11 +100,27 @@ public class Cryptography {
 		}
 	}
 
+	public void pubKeyReq(Node succ) {
+		try {
+			new Forwarder().send(new Request(succ.getAddress(), Request.pubKey_REQ));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
 	public PublicKey getPubKeyTarget() {
 		return pubKeyTarget;
 	}
 
 	public void setPubKeyTarget(PublicKey pubKeyTarget) {
 		this.pubKeyTarget = pubKeyTarget;
+	}
+
+	public void encryptSecretKey(String sk) {
+		//TODO
+	}
+
+	public void decryptSecretKey(String sk) {
+		//TODO
 	}
 }
