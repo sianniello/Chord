@@ -10,8 +10,12 @@ import java.net.Socket;
 import java.util.HashSet;
 import java.util.Random;
 
-import cryptografy.Cryptography;
-
+/**
+ * This class is responsible for forwarding the requests to the server handler
+ * 
+ * @author Stefano
+ *
+ */
 @SuppressWarnings("serial")
 public class ClientHandler implements Serializable{
 
@@ -58,7 +62,7 @@ public class ClientHandler implements Serializable{
 	}
 
 	/**
-	 * node join a ring. If coupling node is invalid it tries to join with a randomly chosen node from its set
+	 * node joins a ring. If coupling node is invalid it tries to join with a randomly chosen node from its set
 	 * @param n = coupling node
 	 */
 	public void joinRequest(int n) {
