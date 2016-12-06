@@ -84,8 +84,9 @@ public class Request implements Serializable{
 		this.encryptSecretKey = encryptSecretKey;
 	}
 
-	public Request(InetSocketAddress address2, int pubkeyRes, PublicKey pubKey2) {
-		// TODO Auto-generated constructor stub
+	public Request(InetSocketAddress address, int request, PublicKey pubKey) {
+		this(address, request);
+		this.pubKey = pubKey;
 	}
 
 	public synchronized InetSocketAddress getAddress() {

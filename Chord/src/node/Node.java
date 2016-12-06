@@ -47,6 +47,13 @@ public class Node implements Runnable, Serializable{
 	private File file;
 	private boolean online, stab;
 	private int k;
+	
+	/**
+	 * only port constructor. it will uses default join server address
+	 * @param port
+	 * @throws IOException
+	 * @throws ClassNotFoundException
+	 */
 	@SuppressWarnings({ "javadoc", "unqualified-field-access" })
 	public Node(int port) throws IOException, ClassNotFoundException {
 		this.node_address = new InetSocketAddress(InetAddress.getLocalHost(), port);
@@ -62,6 +69,13 @@ public class Node implements Runnable, Serializable{
 		Cryptography.keyGeneration();
 	}
 
+	/**
+	 * contructor with node's port and join server's address
+	 * @param node_port
+	 * @param join_server
+	 * @throws ClassNotFoundException
+	 * @throws IOException
+	 */
 	public Node(int node_port, InetSocketAddress join_server) throws ClassNotFoundException, IOException {
 		this.node_address = new InetSocketAddress(InetAddress.getLocalHost(), node_port);
 		id = Math.abs(hf.hashString(node_address.toString(), Charset.defaultCharset()).asInt())%m;
@@ -128,7 +142,7 @@ public class Node implements Runnable, Serializable{
 	 * Add a runtime-generated random file in 'k-corresponding' node. K is the result
 	 * of hashing function of file. 
 	 * If k != node's id client's node forwards a request
-	 * to his successor.
+	 * to its successor.
 	 * @throws IOException
 	 */
 	public synchronized void addFile() throws IOException {
@@ -141,7 +155,7 @@ public class Node implements Runnable, Serializable{
 
 			fileList.put(k, Cryptography.encrypt(file));
 
-			//node send a copy of file to his successor as backup
+			//node send a copy of file to its successor as backup
 			if(succ.getId() != this.id)
 				new ClientHandler().saveReplica(succ, file, k);
 			System.out.println(this.toString() + ": save file " + file.getName() + ", dimension " + file.length() + " bytes, with key " + k);
@@ -155,7 +169,7 @@ public class Node implements Runnable, Serializable{
 	}
 
 	/**
-	 * once target node is found it can be saved in his list
+	 * once target node is found it can be saved in its list
 	 * @param node = target node for saving file
 	 */
 	public void saveFile(Node node) {
@@ -333,6 +347,10 @@ public class Node implements Runnable, Serializable{
 		replica.put(k2, file2);
 	}
 
+	/**
+	 * After a join new node receive its boot list from its successor
+	 * @param fileList2
+	 */
 	public synchronized void reassignment(Hashtable<Integer, File> fileList2) {
 		fileList.putAll(fileList2);
 		System.out.println(fileList);

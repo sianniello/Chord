@@ -31,11 +31,11 @@ class ServerHandler implements Runnable {
 
 			switch(request.getRequest()) {
 
-			//node receive an add file request. It can accept or forward request on ring
+			//node receives an add file request. It can accept or forwards request on ring
 			case Request.addFile_REQ:
 				int k = request.getK();
 
-				//file is under responsability of this node. So it send back his identity to sender node
+				//file is under responsability of this node. So it sends back its identity to sender node
 				if(k == n.getId())	
 					new Forwarder().send(new Request(request.getNode().getAddress(), Request.addFile_RES, n));
 
@@ -53,6 +53,7 @@ class ServerHandler implements Runnable {
 				n.saveFile(request.getNode());
 				break;
 
+				//node receives file to save in its list also sends a replica of file to its successor
 			case Request.addFile:
 				int key = request.getK();
 				n.getFileList().put(key, request.getFile());
@@ -63,7 +64,7 @@ class ServerHandler implements Runnable {
 				System.out.println(n.toString() + ": Filelist " + n.getFileList().toString());
 				break;
 
-				//a new node requests join to a ring's node. It send back successor of new node
+				//a new node requests join to a ring's node. It sends back successor of new node
 			case Request.join_REQ:
 				//node receives a join request but it has not joined any ring yet
 				if(n.getSucc() == null) {
@@ -78,7 +79,7 @@ class ServerHandler implements Runnable {
 					new Forwarder().send(new Request(n.getSucc().getAddress(), Request.join_REQ, request.getNode()));
 				break;
 
-				//joined node update his succ and start stabilization routine
+				//joined node update its succ and start stabilization routine
 			case Request.join_RES:
 				if(request.getNode() == null)
 					System.err.println("Join Failed!");
@@ -97,14 +98,14 @@ class ServerHandler implements Runnable {
 				stabilize(n);
 				break;
 
-				//node send stabilization request to his successor and it reply with his predecessor
+				//node sends stabilization request to its successor and it reply with its predecessor
 			case Request.stabilize_REQ:
 				Forwarder f = new Forwarder();
 				req = new Request(request.getNode().getAddress(), Request.stabilize, n.getPred());
 				f.send(req);
 				break;
 
-				//node receives his successor's predecessor called 'x', check it and notifyies his successor
+				//node receives its successor's predecessor called 'x', check it and notifyies its successor
 			case Request.stabilize:
 				Node x = request.getNode();
 				if(x != null && (successor(n.getSucc().getId(), n.getId(), x.getId()) || n.getSucc().getId() == n.getId())) {
@@ -117,7 +118,7 @@ class ServerHandler implements Runnable {
 				notifySuccessor();
 				break;
 
-				//node receive a notify message from x. It become aware that a new node just entered right behind him
+				//node receives a notify message from x. It become aware that a new node just entered right behind him
 			case Request.notify:
 				x = request.getNode();
 				if(n.getPred() == null || (n.getPred().getId() == n.getId() || predecessor(n.getPred().getId(), x.getId(), n.getId()))) {
@@ -135,6 +136,7 @@ class ServerHandler implements Runnable {
 								n.getFileList().remove(key2);
 							}
 						}
+						//node sends to joined node a list of files with k-corresponding to joined node's id
 						new Forwarder().send(new Request(x.getAddress(), Request.reassign_file, reassign));
 						System.out.println(n.toString() + ": Filelist " + n.getFileList());
 					}
@@ -144,16 +146,17 @@ class ServerHandler implements Runnable {
 				}
 				break;
 
-				//node receive file from his predecessor then save it to his replica list
+				//node receives file from its predecessor then save it to its replica list
 			case Request.replicaFile:
 				n.saveReplicaFile(request.getK(), request.getFile());
 				break;
 
-				//node receive file LIST from his predecessor then save it to his replica list
+				//node receives file LIST from its predecessor then save it to its replica list
 			case Request.replicaList:
 				n.saveReplicaList(request.getFileList());
 				break;
 
+				//node after done a join receives file LIST from its successor then saves it to its list
 			case Request.reassign_file:
 				n.reassignment(request.getFileList());
 				break;
@@ -165,12 +168,14 @@ class ServerHandler implements Runnable {
 			case Request.succ2Update:
 				n.setSucc2(request.getNode());
 				break;
+				
 			case Request.pubKey_REQ:
 				new Forwarder().send(new Request(request.getNode().getAddress(), Request.pubKey_RES, n.getPubKey()));
 				break;
 			case Request.pubKey_RES:
 				n.setPubKeyTarget(request.getPubKey());
 				break;
+				
 			default:
 				break;
 			}
@@ -182,7 +187,7 @@ class ServerHandler implements Runnable {
 
 
 	/**
-	 * node notify his successor that it's right behind him
+	 * node notify its successor that it's right behind it
 	 */
 	private void notifySuccessor() {
 		if(n.getSucc() != null && n.isOnline() && n.getId() != n.getSucc().getId()) {
@@ -191,7 +196,7 @@ class ServerHandler implements Runnable {
 			try {
 				f.send(req);
 			} catch (IOException e) {
-				//TODO successor failed
+				//successor failed
 			}
 		}
 	}
@@ -201,7 +206,6 @@ class ServerHandler implements Runnable {
 	 * about its predecessor, verifies if n's immediate
 	 * successor is consistent, and tells the successor about n
 	 * when in while loop function dedicates thread to stabilize routine
-	 * 
 	 * 
 	 * @param node
 	 */
@@ -254,7 +258,7 @@ class ServerHandler implements Runnable {
 
 
 	/**
-	 * This function verify if x in (n, s)
+	 * This function verifies if x in (n, s)
 	 */
 	boolean successor(int s, int n, int x) {
 		if(x == n || x == s) return false;
@@ -264,7 +268,7 @@ class ServerHandler implements Runnable {
 	}
 
 	/**
-	 * This function verify if x in (p, n)
+	 * This function verifies if x in (p, n)
 	 */
 	boolean predecessor(int p, int x, int n) {
 		if(x == n || x == p) return false;

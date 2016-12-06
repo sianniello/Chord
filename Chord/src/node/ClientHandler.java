@@ -58,7 +58,7 @@ public class ClientHandler implements Serializable{
 	}
 
 	/**
-	 * node join a ring. If coupling node is invalid it tries to join with a randomly chosen node from his set
+	 * node join a ring. If coupling node is invalid it tries to join with a randomly chosen node from its set
 	 * @param n = coupling node
 	 */
 	public void joinRequest(int n) {
@@ -120,7 +120,7 @@ public class ClientHandler implements Serializable{
 	}
 
 	/**
-	 * when a file is saved in node it send a copy of file to his successor
+	 * when a file is saved in node it send a copy of file to its successor
 	 * @param succ = successor of current node
 	 * @param file = file to replicate
 	 * @param k	= hashing key of file
