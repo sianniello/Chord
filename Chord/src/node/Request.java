@@ -79,7 +79,7 @@ public class Request implements Serializable{
 		this.fileList = fileList;
 	}
 
-	public Request(InetSocketAddress address, int addfile, int request, File encrypt, int k, byte[] encryptSecretKey) {
+	public Request(InetSocketAddress address, int request, File encrypt, int k, byte[] encryptSecretKey) {
 		this(address, request, k, encrypt);
 		this.encryptSecretKey = encryptSecretKey;
 	}

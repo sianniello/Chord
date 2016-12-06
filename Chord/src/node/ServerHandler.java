@@ -165,7 +165,12 @@ class ServerHandler implements Runnable {
 			case Request.succ2Update:
 				n.setSucc2(request.getNode());
 				break;
-
+			case Request.pubKey_REQ:
+				new Forwarder().send(new Request(request.getNode().getAddress(), Request.pubKey_RES, n.getPubKey()));
+				break;
+			case Request.pubKey_RES:
+				n.setPubKeyTarget(request.getPubKey());
+				break;
 			default:
 				break;
 			}

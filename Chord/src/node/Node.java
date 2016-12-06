@@ -37,6 +37,7 @@ public class Node implements Runnable, Serializable{
 	private Node succ, succ2, pred;
 	private final static int m = 10;		//keys/ID space
 	private int id;
+	public transient PublicKey tagetPubKey;
 	private InetSocketAddress node_address;
 	HashFunction hf = Hashing.sha1();
 	private ClientHandler ch;
@@ -228,7 +229,7 @@ public class Node implements Runnable, Serializable{
 		}
 
 		new Thread(n, "Node[" + n.getId() + "]").start();
-		while(choice != 6) {
+		while(choice != 7) {
 			System.out.println("Choose operation");
 			System.out.println("-------------------------\n");
 			System.out.println("1 - Create ring");
@@ -236,10 +237,11 @@ public class Node implements Runnable, Serializable{
 			System.out.println("3 - Add a file");
 			System.out.println("4 - File list");
 			System.out.println("5 - Replica list");
-			System.out.println("6 - Go offline");
+			System.out.println("6 - Change port");
+			System.out.println("7 - Go offline");
 
 			choice = scanner.nextInt();
-			System.out.println("Your ID: " + n.getId() + "\n");
+			System.out.println("\nYour ID: " + n.getId() + "\n");
 			switch (choice) {
 			case 1:
 				n.create();
@@ -268,6 +270,10 @@ public class Node implements Runnable, Serializable{
 				scanner.hasNext();
 				break;
 			case 6:
+				System.out.println("Enter node port (range 10000-10100): ");
+				n.setPort(scanner.nextInt());
+				break;
+			case 7:
 				n.setOffline();
 				break;
 			default:
@@ -276,6 +282,14 @@ public class Node implements Runnable, Serializable{
 			}
 		}
 		scanner.close();
+	}
+
+	private void setPort(int nextInt) {
+		try {
+			node_address = new InetSocketAddress(InetAddress.getLocalHost(), nextInt);
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+		}
 	}
 
 	/**
