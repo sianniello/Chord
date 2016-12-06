@@ -132,12 +132,13 @@ public class Node implements Runnable, Serializable{
 	 */
 	public synchronized void addFile() throws IOException {
 		file = new RandomFile().getFile();
+		File encrypted = Cryptography.encrypt(file);
 		k = Math.abs(hf.hashBytes(Files.toByteArray(file)).asInt())%m;
 
 		//node is liable of file or node's successor is himself.
 		if(k == this.getId() || id == succ.getId()) {
 
-			fileList.put(k, file);
+			fileList.put(k, Cryptography.encrypt(file));
 
 			//node send a copy of file to his successor as backup
 			if(succ.getId() != this.id)
@@ -147,7 +148,7 @@ public class Node implements Runnable, Serializable{
 		}
 		//node's successor is liable of file. 
 		else if(k == succ.getId() || successor(succ.getId(), id, k))
-			new ClientHandler().addFile(succ, file, k);
+			new ClientHandler().addFile(succ, Cryptography.encrypt(file), k);
 		else 
 			new ClientHandler().addFileReq(succ, k, this);
 	}
@@ -176,8 +177,7 @@ public class Node implements Runnable, Serializable{
 			}
 			server.close();
 		} catch (IOException e) {
-			System.err.println("Connection lost! " + this.toString() + " " + e.getClass().toString());
-			e.printStackTrace();
+			System.err.println("Connection with sever lost! " + this.toString() + " " + e.getClass().toString());
 		}
 	}
 

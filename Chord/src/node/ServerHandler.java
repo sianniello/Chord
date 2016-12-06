@@ -7,8 +7,6 @@ import java.net.Socket;
 import java.util.Hashtable;
 import java.util.Random;
 
-import cryptografy.Cryptography;
-
 class ServerHandler implements Runnable {
 
 	private ObjectInputStream in = null;
