@@ -40,6 +40,11 @@ public class Request implements Serializable{
 	private int k;	//key of file
 	private PublicKey pubKey;
 	private Hashtable<Integer, File> fileList;
+	private byte[] encryptSecretKey;
+
+	public byte[] getEncryptSecretKey() {
+		return encryptSecretKey;
+	}
 
 	public Request(InetSocketAddress address) {
 		this.address = address;
@@ -74,9 +79,9 @@ public class Request implements Serializable{
 		this.fileList = fileList;
 	}
 
-	//change key request
-	public Request(InetSocketAddress address2, int pubkeyRes, String pubKey) {
-		// TODO Auto-generated constructor stub
+	public Request(InetSocketAddress address, int addfile, int request, File encrypt, int k, byte[] encryptSecretKey) {
+		this(address, request, k, encrypt);
+		this.encryptSecretKey = encryptSecretKey;
 	}
 
 	public Request(InetSocketAddress address2, int pubkeyRes, PublicKey pubKey2) {
@@ -122,4 +127,5 @@ public class Request implements Serializable{
 	public PublicKey getPubKey() {
 		return pubKey;
 	}
+
 }

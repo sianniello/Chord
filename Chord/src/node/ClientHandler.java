@@ -107,9 +107,9 @@ public class ClientHandler implements Serializable{
 	 * @param file = file to save
 	 * @param k = hashing key of file
 	 */
-	public void addFile(Node node, File file, int k) {
+	public void addFile(Node target_node, File file, int k) {
 		Forwarder f = new Forwarder();
-		Request req = new Request(node.getAddress(), Request.addFile, k, file);
+		Request req = new Request(target_node.getAddress(), Request.addFile, k, file);
 		try {
 			f.send(req);
 		} catch (IOException e) {

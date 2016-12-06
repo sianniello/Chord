@@ -7,6 +7,8 @@ import java.net.Socket;
 import java.util.Hashtable;
 import java.util.Random;
 
+import cryptografy.Cryptography;
+
 class ServerHandler implements Runnable {
 
 	private ObjectInputStream in = null;
@@ -59,7 +61,7 @@ class ServerHandler implements Runnable {
 				if(n.getSucc() != null && n.getId() != n.getSucc().getId())
 					new Forwarder().send(new Request(n.getSucc().getAddress(), Request.replicaFile, key, request.getFile()));
 				System.out.println(n.toString() + ": save file " + request.getFile().getName() + ", dimension " + 
-						request.getFile().length() + " with key " + key);
+						request.getFile().length() + " bytes with key " + key);
 				System.out.println(n.toString() + ": Filelist " + n.getFileList().toString());
 				break;
 
@@ -160,14 +162,6 @@ class ServerHandler implements Runnable {
 
 			case Request.check_alive:
 				//dummy request
-				break;
-
-			case Request.pubKey_REQ:
-				new Forwarder().send(new Request(request.getAddress(), Request.pubKey_RES, n.getPubKey()));
-				break;
-
-			case Request.pubKey_RES:
-				n.setPubKeyTarget(request.getPubKey());
 				break;
 
 			case Request.succ2Update:

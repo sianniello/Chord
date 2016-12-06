@@ -7,15 +7,16 @@ import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Security;
-import java.util.Random;
-
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
 import javax.crypto.CipherOutputStream;
+import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
 import de.flexiprovider.core.FlexiCoreProvider;
@@ -25,34 +26,37 @@ import node.Request;
 
 public class Cryptography {
 
-	private static PrivateKey pvtKey;
+	protected static PrivateKey pvtKey;
 	private static PublicKey pubKey;
 	private static String secretKey;
+	private PublicKey pubKeyTarget;	//public key of receiver
 
-	private PublicKey pubKeyTarget;
+	private static SecretKey secKey;
+	private static byte[] encryptSecretKey;
 
 	public static void keyGeneration() {
+		Security.addProvider(new FlexiCoreProvider());
 		try {
-			KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA", new FlexiCoreProvider());
+			KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA", "FlexiCore");
 			kpg.initialize(1024);
 			KeyPair keyPair = kpg.generateKeyPair();
 			pvtKey = keyPair.getPrivate();
 			pubKey = keyPair.getPublic();
-			secretKey = "";
-			for(int i = 0; i <= new Random().nextInt(20) + 10; i++)
-				secretKey += (char)(new Random().nextInt(26) + 'a');
-		} catch (NoSuchAlgorithmException e) {
+		} catch (NoSuchAlgorithmException | NoSuchProviderException e) {
 			e.printStackTrace();
 		}
 
 	}
 
 	public static File encrypt(File file) {
-		SecretKeySpec key = new SecretKeySpec(secretKey.getBytes(), "AES");
 		File ef = new File(file.getName().split("[.]")[0] + ".crypt");
 		try {
-			Cipher cipher = Cipher.getInstance("AES");
-			cipher.init(Cipher.ENCRYPT_MODE, key);
+			KeyGenerator generator = KeyGenerator.getInstance("AES");
+			generator.init(128); // The AES key size in number of bits
+			secKey = generator.generateKey();
+
+			Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+			cipher.init(Cipher.ENCRYPT_MODE, secKey);
 
 			FileInputStream fis = new FileInputStream(file);
 			FileOutputStream fos = new FileOutputStream(ef);
@@ -70,11 +74,16 @@ public class Cryptography {
 		return ef;
 	}
 
-	public static File decrypt(File file) {
-		SecretKeySpec key = new SecretKeySpec(secretKey.getBytes(), "AES");
-		File df = new File(file.getName().replaceAll(".crypt", ""));
+	/**
+	 * Decrypt file
+	 * @param file
+	 * @return
+	 */
+	public static File decrypt(File file, String k) {
+		SecretKeySpec key = new SecretKeySpec(k.getBytes(), "AES");
+		File df = new File(file.getName().replaceAll("crypt", "txt"));
 		try {
-			Cipher cipher = Cipher.getInstance("AES");
+			Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
 			cipher.init(Cipher.DECRYPT_MODE, key);
 			FileInputStream fis = new FileInputStream(file);
 			CipherInputStream cis = new CipherInputStream(fis, cipher);
@@ -124,25 +133,30 @@ public class Cryptography {
 		Cryptography.pubKey = pubKey;
 	}
 
-	public static byte[] encryptSecretKey(String sk, PublicKey pk) {
+	/**
+	 * Encrypt secret key with RSA public key
+	 * @param plain secret key
+	 * @param public key of target
+	 * @return 
+	 */
+	public static byte[] encryptSecretKey(PublicKey pk) {
 		byte[] cipherText = null;
 		try {
-			// get an RSA cipher object and print the provider
-			final Cipher cipher = Cipher.getInstance("RSA");
+			Cipher cipher = Cipher.getInstance("RSA", "FlexiCore");
 			// encrypt the plain text using the public key
 			cipher.init(Cipher.ENCRYPT_MODE, pk);
-			cipherText = cipher.doFinal(sk.getBytes());
+			cipherText = cipher.doFinal(secKey.getEncoded());
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		return cipherText;
+		return encryptSecretKey = cipherText;
 	}
 
 	public static String decryptSecretKey(byte[] sk) {
 		byte[] dectyptedText = null;
 		try {
 			// get an RSA cipher object and print the provider
-			final Cipher cipher = Cipher.getInstance("RSA");
+			final Cipher cipher = Cipher.getInstance("RSA", "FlexiCore");
 
 			// decrypt the text using the private key
 			cipher.init(Cipher.DECRYPT_MODE, pvtKey);
@@ -152,5 +166,9 @@ public class Cryptography {
 			ex.printStackTrace();
 		}
 		return new String(dectyptedText);
+	}
+
+	public static String getSecretKey() {
+		return secretKey;
 	}
 }

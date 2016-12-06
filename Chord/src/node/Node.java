@@ -58,6 +58,7 @@ public class Node implements Runnable, Serializable{
 		online = true;
 		stab = false;
 		ch = new ClientHandler(this);
+		Cryptography.keyGeneration();
 	}
 
 	public Node(int node_port, InetSocketAddress join_server) throws ClassNotFoundException, IOException {
@@ -71,6 +72,7 @@ public class Node implements Runnable, Serializable{
 		online = true;
 		stab = false;
 		ch = new ClientHandler(this);
+		Cryptography.keyGeneration();
 	}
 
 	public synchronized Hashtable<Integer, File> getReplica() {
@@ -121,21 +123,31 @@ public class Node implements Runnable, Serializable{
 		return fileList;
 	}
 
+	/**
+	 * Add a runtime-generated random file in 'k-corresponding' node. K is the result
+	 * of hashing function of file. 
+	 * If k != node's id client's node forwards a request
+	 * to his successor.
+	 * @throws IOException
+	 */
 	public synchronized void addFile() throws IOException {
 		file = new RandomFile().getFile();
 		k = Math.abs(hf.hashBytes(Files.toByteArray(file)).asInt())%m;
 
-		//node is liable of file
-		if(k == this.getId()) {
+		//node is liable of file or node's successor is himself.
+		if(k == this.getId() || id == succ.getId()) {
 
 			fileList.put(k, file);
 
 			//node send a copy of file to his successor as backup
 			if(succ.getId() != this.id)
 				new ClientHandler().saveReplica(succ, file, k);
-			System.out.println(this.toString() + ": save file " + file.getName() + ", dimension " + file.length() + "bytes, with key " + k);
+			System.out.println(this.toString() + ": save file " + file.getName() + ", dimension " + file.length() + " bytes, with key " + k);
 			System.out.println(this.toString() + ": Filelist " + this.getFileList().toString());
 		}
+		//node's successor is liable of file. 
+		else if(k == succ.getId() || successor(succ.getId(), id, k))
+			new ClientHandler().addFile(succ, file, k);
 		else 
 			new ClientHandler().addFileReq(succ, k, this);
 	}
@@ -146,7 +158,7 @@ public class Node implements Runnable, Serializable{
 	 */
 	public void saveFile(Node node) {
 		ch = new ClientHandler();
-		ch.addFile(node, file, k);
+		ch.addFile(node, Cryptography.encrypt(file), k);
 	}
 
 	/* (non-Javadoc)
@@ -325,11 +337,21 @@ public class Node implements Runnable, Serializable{
 	}
 
 	public PublicKey getPubKey() {
-		return new Cryptography().getPubKeyTarget();
+		return Cryptography.getPubKey();
 	}
 
 	public void setPubKeyTarget(PublicKey k) {
 		new Cryptography().setPubKeyTarget(k);
+	}
+	
+	/**
+	 * This function verify if x in (n, s)
+	 */
+	boolean successor(int s, int n, int x) {
+		if(x == n || x == s) return false;
+		if((s - n + m)%m > (x - n + m)%m || n == s)
+			return true;
+		else return false;
 	}
 
 }
