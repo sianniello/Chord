@@ -47,7 +47,7 @@ public class Cryptography {
 
 	}
 
-	public File encrypt(File file) {
+	public static File encrypt(File file) {
 		SecretKeySpec key = new SecretKeySpec(secretKey.getBytes(), "AES");
 		File ef = new File(file.getName().split("[.]")[0] + ".crypt");
 		try {
@@ -70,7 +70,7 @@ public class Cryptography {
 		return ef;
 	}
 
-	public File decrypt(File file) {
+	public static File decrypt(File file) {
 		SecretKeySpec key = new SecretKeySpec(secretKey.getBytes(), "AES");
 		File df = new File(file.getName().replaceAll(".crypt", ""));
 		try {
@@ -116,11 +116,41 @@ public class Cryptography {
 		this.pubKeyTarget = pubKeyTarget;
 	}
 
-	public void encryptSecretKey(String sk) {
-		//TODO
+	public static PublicKey getPubKey() {
+		return pubKey;
 	}
 
-	public void decryptSecretKey(String sk) {
-		//TODO
+	public static void setPubKey(PublicKey pubKey) {
+		Cryptography.pubKey = pubKey;
+	}
+
+	public static byte[] encryptSecretKey(String sk, PublicKey pk) {
+		byte[] cipherText = null;
+		try {
+			// get an RSA cipher object and print the provider
+			final Cipher cipher = Cipher.getInstance("RSA");
+			// encrypt the plain text using the public key
+			cipher.init(Cipher.ENCRYPT_MODE, pk);
+			cipherText = cipher.doFinal(sk.getBytes());
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return cipherText;
+	}
+
+	public static String decryptSecretKey(byte[] sk) {
+		byte[] dectyptedText = null;
+		try {
+			// get an RSA cipher object and print the provider
+			final Cipher cipher = Cipher.getInstance("RSA");
+
+			// decrypt the text using the private key
+			cipher.init(Cipher.DECRYPT_MODE, pvtKey);
+			dectyptedText = cipher.doFinal(sk);
+
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
+		return new String(dectyptedText);
 	}
 }
