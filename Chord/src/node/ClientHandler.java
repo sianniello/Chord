@@ -10,6 +10,8 @@ import java.net.Socket;
 import java.util.HashSet;
 import java.util.Random;
 
+import cryptografy.Cryptography;
+
 /**
  * This class is responsible for forwarding the requests to the server handler
  * 
@@ -114,7 +116,7 @@ public class ClientHandler implements Serializable{
 	 */
 	public void addFile(Node target_node, File file, int k) {
 		try {
-			//new Forwarder().send(new Request(target_node.getAddress(), Request.pubKey_REQ, n));
+			//new Forwarder().send(new Request(target_node.getAddress(), Request.pubKey_REQ));
 			Forwarder f = new Forwarder();
 			Request req = new Request(target_node.getAddress(), Request.addFile, k, file);
 			f.send(req);

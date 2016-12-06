@@ -28,7 +28,7 @@ class ServerHandler implements Runnable {
 	public void run() {
 		try {
 			Request request = (Request) in.readObject();
-
+			
 			switch(request.getRequest()) {
 
 			//node receives an add file request. It can accept or forwards request on ring
@@ -37,11 +37,11 @@ class ServerHandler implements Runnable {
 
 				//file is under responsability of this node. So it sends back its identity to sender node
 				if(k == n.getId())	
-					new Forwarder().send(new Request(request.getNode().getAddress(), Request.addFile_RES, n));
+					new Forwarder().send(new Request(request.getNode().getAddress(), Request.addFile_RES, k, n));
 
 				//file is under responsability of current node's successor
 				else if(k == n.getSucc().getId() || successor(n.getSucc().getId(), n.getId(), k))	
-					new Forwarder().send(new Request(request.getNode().getAddress(), Request.addFile_RES, n.getSucc()));
+					new Forwarder().send(new Request(request.getNode().getAddress(), Request.addFile_RES, k, n.getSucc()));
 
 				//request is forwording
 				else	
@@ -50,7 +50,7 @@ class ServerHandler implements Runnable {
 
 				//node receives liable node of file saving
 			case Request.addFile_RES:
-				n.saveFile(request.getNode());
+				n.saveFile(request.getNode(), request.getK());
 				break;
 
 				//node receives file to save in its list also sends a replica of file to its successor

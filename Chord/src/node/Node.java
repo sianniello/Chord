@@ -46,7 +46,6 @@ public class Node implements Runnable, Serializable{
 	private Hashtable<Integer, File> replica;
 	private File file;
 	private boolean online, stab;
-	private int k;
 	
 	/**
 	 * only port constructor. it will uses default join server address
@@ -148,9 +147,9 @@ public class Node implements Runnable, Serializable{
 	public synchronized void addFile() throws IOException {
 		file = new RandomFile().getFile();
 		File encrypted = Cryptography.encrypt(file);
-		k = Math.abs(hf.hashBytes(Files.toByteArray(file)).asInt())%m;
+		int k = Math.abs(hf.hashBytes(Files.toByteArray(file)).asInt())%m;
 
-		//node is liable of file or node's successor is himself.
+		//node is liable of file or node's successor is itself.
 		if(k == this.getId() || id == succ.getId()) {
 
 			fileList.put(k, Cryptography.encrypt(file));
@@ -171,8 +170,9 @@ public class Node implements Runnable, Serializable{
 	/**
 	 * once target node is found it can be saved in its list
 	 * @param node = target node for saving file
+	 * @param k 
 	 */
-	public void saveFile(Node node) {
+	public void saveFile(Node node, int k) {
 		ch = new ClientHandler();
 		ch.addFile(node, Cryptography.encrypt(file), k);
 	}
