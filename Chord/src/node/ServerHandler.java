@@ -108,10 +108,12 @@ class ServerHandler implements Runnable {
 				//node receives its successor's predecessor called 'x', check it and notifyies its successor
 			case Request.stabilize:
 				Node x = request.getNode();
+				
 				if(x != null && (successor(n.getSucc().getId(), n.getId(), x.getId()) || n.getSucc().getId() == n.getId())) {
 					n.setSucc(x);
 					System.out.println(n.toString() + ": Successor updated, now it's " + n.getSucc().getId());
 					new Forwarder().send(new Request(n.getSucc().getAddress(), Request.replicaList, n.getFileList()));
+					
 					if(n.getPred() != null)
 						new Forwarder().send(new Request(n.getPred().getAddress(), Request.succ2Update, n.getSucc()));
 				}
