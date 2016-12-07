@@ -25,7 +25,7 @@ public class JoinServer {
 		server = new ServerSocket(port);
 		set = new HashSet<>();
 
-		System.out.println("Server listening at: " + Inet4Address.getLoopbackAddress() + ":" +port);
+		System.out.println("Server listening at: " + Inet4Address.getLocalHost() + ":" +port);
 	}
 
 	public void execute() throws IOException{
