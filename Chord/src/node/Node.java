@@ -231,11 +231,13 @@ public class Node implements Runnable, Serializable{
 
 		System.out.println("Enter node port (range 10000-10100): ");
 		int node_port = scanner.nextInt();
+		System.out.println("Enter JoinServer IP address(xxx.xxx.xxx.xxx) or its network name:");
+		String js_ip = scanner.next();
 		System.out.println("Enter JoinServer port:");
 		int js_port = scanner.nextInt();
-
+		
 		try {
-			n = new Node(node_port, InetSocketAddress.createUnresolved("localhost", js_port));
+			n = new Node(node_port, InetSocketAddress.createUnresolved(js_ip, js_port));
 		} catch (NumberFormatException | ClassNotFoundException e) {
 			System.err.println("Invalid address format");
 			scanner.close();
