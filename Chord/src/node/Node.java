@@ -246,7 +246,7 @@ public class Node implements Runnable, Serializable{
 
 		new Thread(n, "Node[" + n.getId() + "]").start();
 		while(choice != 7) {
-			System.out.println("Choose operation");
+			System.out.println("\n***Choose operation***");
 			System.out.println("-------------------------\n");
 			System.out.println("1 - Create ring");
 			System.out.println("2 - Join Ring");
