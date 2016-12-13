@@ -367,7 +367,9 @@ public class Node implements Runnable, Serializable{
 	}
 
 	public synchronized void saveReplicaList(Hashtable<Integer, File> replicaList) {
-		replica.putAll(replicaList);
+		for(Integer k : replicaList.keySet())
+			if(!replica.containsKey(k))
+				replica.put(k, replicaList.get(k));
 	}
 
 	public PublicKey getPubKey() {

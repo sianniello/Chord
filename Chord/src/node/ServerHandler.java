@@ -73,8 +73,10 @@ class ServerHandler implements Runnable {
 				}
 
 				System.out.println(n.toString() + ": received a join request from Node[" + request.getNode().getAddress() + "]");
-				if(request.getNode().getId() == n.getSucc().getId() || successor(n.getSucc().getId(), n.getId(), request.getNode().getId()))
+				if(request.getNode().getId() == n.getSucc().getId() || successor(n.getSucc().getId(), n.getId(), request.getNode().getId())) {
 					new Forwarder().send(new Request(request.getNode().getAddress(), Request.join_RES, n.getSucc()));
+					new Forwarder().send(new Request(request.getNode().getAddress(), Request.replicaList, n.getFileList()));
+				}
 				else
 					new Forwarder().send(new Request(n.getSucc().getAddress(), Request.join_REQ, request.getNode()));
 				break;
