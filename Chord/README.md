@@ -31,6 +31,8 @@ A questo punto è possibile scegliere se avviare singolarmente i nodi oppure avv
 ```sh
 Enter node port:
 10000
+Enter JoinServer IP address(xxx.xxx.xxx.xxx) or its network name:
+localhost
 Enter join server port:
 1099
 ```
